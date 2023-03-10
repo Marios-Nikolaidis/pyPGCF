@@ -8,8 +8,6 @@ from Bio import SeqIO
 from Bio import AlignIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-from Bio.Align.Applications import MuscleCommandline
-from Bio.Phylo.Applications import PhymlCommandline
 from tqdm import tqdm
 
 
@@ -31,9 +29,9 @@ class Phylogenomics_instance():
         self.in_dir = params['in']
         self.out_dir = pathlib.Path(params['out']) / name
         self.ref = ref
-        self.bs_replicates = params['bootstrap']
-        self.distance = params['distance']
-        self.threads = params['num_threads']
+        #self.bs_replicates = params['bootstrap']
+        #self.distance = params['distance']
+        self.threads = params['phylogenomic_threads']
 
     def createCOGFasta(self,**kwargs):
         """
@@ -67,24 +65,16 @@ class Phylogenomics_instance():
                 fout_handle.close()
         logging.debug(" Created a file for each orthologous group. Dir %s"  %(self.out_dir))
     # Write presequity for dash in gene name. Need to find a way to fix this
-    
-    
+
     def alignCOGs(self):
         """
         Use muscle to align the COGs
-        :return: None
-        """
-        """
         for muscle
         r = p / ".." / "resources" / params['sys']
         muscle_bin_path = r / "muscle3.8.31"
         """
 
-
-
-        p = pathlib.Path(__file__).parents[1]
-        # r = p / ".." / "resources" / self.system
-        r = p / "resources" / 'Linux'
+        resources_path = pathlib.Path(__file__).parents[1] / "resources" / platform
         # THESE ARE USED BECAUSE THERE IS A pickling ERROR
         # if i put the _alignemtn inside this function
         # TODO: Try to put it inside the class?
@@ -110,7 +100,6 @@ class Phylogenomics_instance():
             res = pool.map(_alignment,files_lists)
         logging.debug(" Finished COG alignments in dir %s" %(self.out_dir))
     
-    
     def createSupersequence(self):
         """
         Join the aligned COGs into a supersequence
@@ -122,7 +111,6 @@ class Phylogenomics_instance():
             sorting_key = lambda key: [ int_convert(c) for c in re.split('([0-9]+)', key) ] 
             return sorted(iteratable, key = sorting_key)
         
-    
         def _initSuperseqFile(superseq_file):
             """
             Initialise the supersequence file with empty sequences for each organism
@@ -172,37 +160,27 @@ class Phylogenomics_instance():
         gblock_bin_path = os.path.join(str(pathlib.Path(__file__)),str(pathlib.Path("../resources/Gblocks_0.91b/Gblocks"))).replace(os.path.basename(__file__) + "/", "")
         cmd = " ".join([gblock_bin_path, 
                         str(self.out_dir / "supersequence.fa"),
-                        "-s=y -e=-gb -p=y"
+                        "-s=y -e=-gb -p=y" 
+                        # Need to check if -p=y is needed
+                        # Maybe -p=n is better
+                        # Allowing for gaps in the alignment?
                         ])
         os.system(cmd)
         logging.debug(" Filtered the alignment with GBlocks")
         return None
     
-    def computeTree(self, iqtree=True, nj=False):
+    def computeTree(self):
         """
-        Compute the phylogenomic tree from the supersequence. The user will provide bootstrap replicates and desired distance correction
-        Defaults 500bs, Kimura
+        Compute the phylogenomic tree using either IQtree
+        TODO: Add support for other tree building methods
         """
         supersequence_file = self.out_dir / "supersequence.fa-gb"
-        p = pathlib.Path(__file__).parents[1]
-        r = p / "resources" / 'Linux'
-        if nj:
-            seaview = str(r / "seaview")
-            cmd =  "".join([seaview,
-                            " -build_tree -NJ -replicates 500  -distance Kimura -o ",
-                            supersequence_file,
-                            ".nwk ",
-                            supersequence_file
-                        ])
-            method = "Neighbour Joining"
-        if iqtree:
-            iqtree = str(r / "iqtree2")
-            cmd = "".join([iqtree,
-                            " -m TEST -merit AIC -alrt 1000 -T ",
-                            str(self.threads), " -s ", str(supersequence_file)])
-            method = "Maximum Likelihood"
-
-            #TODO: Implement a clean-up function 
+        resources_path = pathlib.Path(__file__).parents[1] / "resources" / platform
+        iqtree = str(resources_path / "iqtree2")
+        cmd = "".join([iqtree,
+                        " -m TEST -merit AIC -alrt 1000 -T ",
+                        str(self.threads), " -s ", str(supersequence_file)])
+        method = "Maximum Likelihood"
         logging.debug(f" Initiating computation of {method} phylogenomic tree")
         os.system(cmd)
         logging.debug(" Computed Phylogenomic Tree ")

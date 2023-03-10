@@ -1,114 +1,130 @@
 import os
 import re
 import pandas as pd
-from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
 from Bio import SeqIO
 from tqdm import tqdm
 import logging
-import pathlib
+from pathlib import Path
 import numpy as np
 
-class Instance():
-
-    def __init__(self, params, evol_groups, evol_groups_stats, name, ref):
-        self.params = params # Passed from the main.py
-        self.evol_groups = evol_groups # Passed from main.py
-        self.evol_groups_stats = evol_groups_stats
+class Core_genome_instance():
+    def __init__(self, fasta_dir: Path, out_dir: Path, ref: str, 
+                 blast_threads: int, blast_evalue: float, blast_method: str,
+                 system: str):
         self.ref = ref
-        self.out_dir = self.params['out'] / str(name)
-        self.system = params['sys']
-        if self.evol_groups != {}:
-            ref_evol_grp = self.evol_groups[self.ref]
-            _updated_fasta = []
-            for fa_file in self.params['fasta_files']:
-                if evol_groups[fa_file] == ref_evol_grp:
-                    _updated_fasta.append(fa_file)
+        self.out_dir = out_dir
+        self.system = system
+        self.blast_threads = blast_threads
+        self.blast_evalue = blast_evalue
+        self.fasta_files = list(fasta_dir.glob("*"))
+        self.blast_method = blast_method
+        # What was the purpose of the update_fasta?
+        # Need to remove the ref from the fasta files
+        for x in range(len(self.fasta_files)):
+            if self.fasta_files[x].name == self.ref:
+                break
+        self.fasta_files.pop(x)
+
+    def _get_blast_binaries(self) -> list:
+        if self.system == 'linux':
+            resources_dir = Path('../resources/Linux/')
+            makeblastdb_bin = Path(__file__)/resources_dir/"makeblastdb" #/ .replace(os.path.basename(__file__) + "/", "")
+            blastn_bin = Path(__file__)/resources_dir/"blastn" #/ .replace(os.path.basename(__file__) + "/", "")
+            blastp_bin = Path(__file__)/resources_dir/"blastn" #/ .replace(os.path.basename(__file__) + "/", "")
+            diamond_bin = Path(__file__)/resources_dir/"diamond" #/ .replace(os.path.basename(__file__) + "/", "")
         else:
-            _updated_fasta = params['fasta_files'].copy()
+            raise Exception("Only linux platforms are supported at the moment..")
 
-        for x in range(len(_updated_fasta)):
-            if _updated_fasta[x] == self.ref:
-                _updated_fasta.pop(x)
-                break       
-        self.fasta_files = _updated_fasta
-        
-        if self.evol_groups == {}:
-            logging.debug(" Evolutionary groups file was not provided, cog statistics will be ommited ")
+        if self.blast_method == "blastp":
+            blast_db_bin = makeblastdb_bin
+            blast_bin = blastp_bin
+        elif self.blast_method == "blastn":
+            blast_bin = blastn_bin
+            blast_db_bin = makeblastdb_bin
+        elif self.blast_method == "diamond":
+            blast_bin = diamond_bin
+            blast_db_bin = None
+        else:
+            raise Exception("Homology search method not supported")
+        return [blast_bin, blast_db_bin]
 
-    def create_dirs(self):
+    def _execute_cmd(cmd: str) -> None:
+        """Generic function to execute a command"""
+        # add logging
+        #logging.info(f"Executing command: {cmd}")
+        os.system(cmd)
+
+    def _create_blast_db(self, fasta_file: Path, blast_db_bin: Path, 
+                         threads: int = 4
+                         ) -> database_f: Path :
         """
-        Perform the necessary actions to set up the script working environment
+        Create blast database for a fasta file
         """
-        directories = ["Blastp_output","Reciprocal_files",
-                        "Blast_DB_dir","COGs","COGs_aln"]
-        for directory in directories:
-            tmp = self.out_dir / directory
-            tmp.mkdir(parents=True,exist_ok=False)
-        logging.debug(" Environment set successfully in dir %s" %(self.out_dir))
+        database_f = self.out_dir / "Blast_DB_dir" / fasta_file.name
+        if self.blast_method == "diamond":
+            cmd = f'{blast_db_bin} makedb --in {fasta_file} --db {database_f} --threads {threads}'
+        elif self.blast_method == "blastp":
+            cmd = f"{blast_db_bin} -in {fasta_file} -dbtype prot -out {database_f}"
+        elif self.blast_method == "blastn":
+            cmd = f"{blast_db_bin} -in {fasta_file} -dbtype nucl -out {database_f}"
+        _execute_cmd(cmd)
+        return database_f
+
+    def _create_blast_cmd(self, blast_bin: Path, fasta_file: Path, database_f: Path, out_file: Path) -> str:
+        if self.blast_method == "diamond":
+            cmd = f"{blast_bin} blastp --query {fasta_file} --db {database_f} --outfmt 6 --out {out_file} --evalue {self.blast_evalue} --threads {self.blast_threads}"
+        else:
+            cmd = f"{blast_bin} -query {fasta_file} -db {database_f} -outfmt 6 -out {out_file} -evalue {self.blast_evalue} -num_threads {self.blast_threads}"
+        return cmd
 
     def reciprocal_blast(self):
         """
-        Execute reciprocal blast
-        The ref point will be the ref sequence
-        The output will be writen in the output directory
-        Input is ref seq fasta file, the list of fasta files
-        and the directories needed for input and output
-        The params dict will be used for the parameters of blast
         """
-        threads = self.params['num_threads']
-        input_dir = self.params['in']
-        out_dir = self.out_dir
-        fasta_files = self.fasta_files
-        evalue = self.params['evalue']
-
         # Create the refseq blast database
-        if self.system == 'linux':
-            makeblastdb_bin = os.path.join(str(pathlib.Path(__file__)), str(pathlib.Path('../resources/Linux/blast_bin/makeblastdb'))).replace(os.path.basename(__file__) + "/", "")
-            blastp_bin = os.path.join(str(pathlib.Path(__file__)), str(pathlib.Path('../resources/Linux/blast_bin/blastp'))).replace(os.path.basename(__file__) + "/", "")
-            blastn_bin = os.path.join(str(pathlib.Path(__file__)), str(pathlib.Path('../resources/Linux/blast_bin/blastn'))).replace(os.path.basename(__file__) + "/", "")
-        else:
-            print("Non linux not implemented yet")
+        blast_bin, blast_db_bin = self._get_blast_binaries()
+        ref_fasta = self.in_dir / self.ref
+        ref_db = self._create_blast_db(ref_fasta, blast_db_bin, self.out_dir)
 
-        ref_db = NcbimakeblastdbCommandline(cmd=makeblastdb_bin,
-                                            dbtype="prot",
-                                            input_file= input_dir / "Fasta_files" / self.ref,
-                                            out= out_dir / "Blast_DB_dir" / self.ref,
-                                            )
-        ref_db()
-        fasta_file_count = len(fasta_files)
-        blast_steps = fasta_file_count
-        for fasta_file in tqdm(fasta_files, ascii=True):
-            if fasta_file.name == self.ref:
-                continue
-            fasta_db = NcbimakeblastdbCommandline(cmd=makeblastdb_bin,
-                                                  dbtype="prot",
-                                                  input_file= str(fasta_file),
-                                                  out=out_dir / "Blast_DB_dir" / fasta_file.name,
-                                                  )
-            blastp_one_way = NcbiblastnCommandline(cmd=blastp_bin,
-                                                    query= str(fasta_file),
-                                                    db=out_dir / "Blast_DB_dir" / self.ref,
-                                                    outfmt=6,
-                                                    out=out_dir / "Blastp_output" / (fasta_file.name + "_vs_" + self.ref + ".txt"),
-                                                    evalue=evalue,
-                                                    num_threads = threads
-                                                    )
+        for fasta_file in tqdm(fasta_files, ascii=True, leave=False, desc="Performing reciprocal BLAST"):
+            # Create the blast database for the fasta file
+            database_f = self._create_blast_db(fasta_file, blastdb_bin, self.out_dir)
+            # Perform the blast one way
+            fout_f = self.out_dir / "Blastp_output" / (self.ref + "_vs_" + fasta_file.name + ".txt"),
+            fout_r = self.out_dir / "Blastp_output" / (fasta_file.name + "_vs_" + self.ref + ".txt"),
+            out=out_dir / "Blastp_output" / (self.ref + "_vs_" + fasta_file.name + ".txt"),
+            forward_blast = self._create_blast_cmd(ref_fasta, blast_bin, database_f, fout)
+            reverse_blast = self._create_blast_cmd(fasta_file, blast_bin, ref_db, fout)
+            _execute_cmd(forward_blast)
+            _execute_cmd(reverse_blast)
+
+        #    fasta_db = NcbimakeblastdbCommandline(cmd=makeblastdb_bin,
+        #                                          dbtype="prot",
+        #                                          input_file= str(fasta_file),
+        #                                          out=out_dir / "Blast_DB_dir" / fasta_file.name,
+        #                                          )
+        #    blastp_one_way = NcbiblastnCommandline(cmd=blastp_bin,
+        #                                            query= str(fasta_file),
+        #                                            db=out_dir / "Blast_DB_dir" / self.ref,
+        #                                            outfmt=6,
+        #                                            out=out_dir / "Blastp_output" / (fasta_file.name + "_vs_" + self.ref + ".txt"),
+        #                                            evalue=evalue,
+        #                                            num_threads = threads
+        #                                            )
     
-            blastp_reverse = NcbiblastnCommandline(cmd=blastp_bin,
-                                                    query=input_dir / "Fasta_files" / self.ref,
-                                                    db=out_dir / "Blast_DB_dir" / fasta_file.name,
-                                                    outfmt=6,
-                                                    out=out_dir / "Blastp_output" / (self.ref + "_vs_" + fasta_file.name + ".txt"),
-                                                    evalue=evalue,
-                                                    num_threads= threads
-                                                    )
-            # Blast output
-            # qaccver saccver pident length mismatch gapopen qstart qend sstart send evalue bitscore
-            fasta_db()
-            blastp_one_way()
-            blastp_reverse()
-        logging.debug(" Finished reciprocal blast ")
-        return None
+        #    blastp_reverse = query=input_dir / "Fasta_files" / self.ref,
+        #                                            db=out_dir / "Blast_DB_dir" / fasta_file.name,
+        #                                            outfmt=6,
+        #                                            out=out_dir / "Blastp_output" / (self.ref + "_vs_" + fasta_file.name + ".txt"),
+        #                                            evalue=evalue,
+        #                                            num_threads= threads
+        #                                            )
+        #    # Blast output
+        #    # qaccver saccver pident length mismatch gapopen qstart qend sstart send evalue bitscore
+        #    fasta_db()
+        #    blastp_one_way()
+        #    blastp_reverse()
+        #logging.debug(" Finished reciprocal blast ")
+        #return None
 
     def parse_blast_results(self):
         """
