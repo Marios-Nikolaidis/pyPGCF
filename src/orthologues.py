@@ -30,15 +30,17 @@ class Core_genome_instance():
             resources_dir = Path('../resources/Linux/')
             makeblastdb_bin = Path(__file__)/resources_dir/"makeblastdb" #/ .replace(os.path.basename(__file__) + "/", "")
             blastn_bin = Path(__file__)/resources_dir/"blastn" #/ .replace(os.path.basename(__file__) + "/", "")
-            blastp_bin = Path(__file__)/resources_dir/"blastn" #/ .replace(os.path.basename(__file__) + "/", "")
             diamond_bin = Path(__file__)/resources_dir/"diamond" #/ .replace(os.path.basename(__file__) + "/", "")
         else:
             raise Exception("Only linux platforms are supported at the moment..")
 
-        if self.blast_method == "blastp":
-            blast_db_bin = makeblastdb_bin
-            blast_bin = blastp_bin
-        elif self.blast_method == "blastn":
+        print(f"""
+        makeblastdb_bin: {makeblastdb_bin}
+        blastn_bin: {blastn_bin}
+        blastp_bin: {blastp_bin}
+        diamond_bin: {diamond_bin}
+              """)
+        if self.blast_method == "blastn":
             blast_bin = blastn_bin
             blast_db_bin = makeblastdb_bin
         elif self.blast_method == "diamond":
@@ -232,7 +234,7 @@ class Core_genome_instance():
             for rec_file in rec_files:
                 _, query_org_name = rec_file.stem.split("_vs_")
                 for gene in cog_matrix_dict:
-                    cog_matrix_dict[gene][query_org_name] = "NaN"
+                    cog_matrix_dict[gene][query_org_name] = np.nan
             return cog_matrix_dict
     
         def _expandCogMatrix(init_cog_matrix_dict, reciprocal_files):
@@ -259,13 +261,7 @@ class Core_genome_instance():
         total_cog_matrix = _expandCogMatrix(init_cog_matrix, reciprocal_files)
         columns = total_cog_matrix.columns
 
-        # Complete cog matrix will contain only the orthologous groups that are present in all organisms
-        complete_cog_matrix = total_cog_matrix
-        for col in columns:
-            complete_cog_matrix = complete_cog_matrix[~complete_cog_matrix[col].str.contains("NaN")]
-        
         total_cog_f = self.out_dir / 'totalCOGs.csv'
-        complete_cog_f = self.out_dir / 'completeCOGs.csv'
-        total_cog_matrix.to_csv(total_cog_f, sep = '\t') # Contains all the COGs
-        complete_cog_matrix.to_csv(complete_cog_f, sep = '\t') # Contains the complete COGs
-        logging.debug(" Created COG matrix files ")
+        total_cog_matrix.to_csv(total_cog_f, sep = '\t', na_rep="X") # Contains all the COGs
+        #complete_cog_f = self.out_dir / 'completeCOGs.csv'
+        #complete_cog_matrix.to_csv(complete_cog_f, sep = '\t') # Contains the complete COGs

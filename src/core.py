@@ -1,4 +1,4 @@
-""" Calculate the core proteins and fingerprints for a given reference genome"""
+""" Calculate the core proteins and fingerprints based on a given reference genome"""
 import pandas as pd
 from typing import List
 from pathlib import Path

@@ -1,8 +1,9 @@
-from Pipeline import Core_genome_instance
-from Phylogenomics import Phylogenomics_instance
+#from Pipeline import Core_genome_instance
+#from Phylogenomics import Phylogenomics_instance
 import argparse
 import logging
 import os
+from src import args
 
 
 def message(msg: str, level: int = 0):
@@ -32,24 +33,19 @@ def directory_setup():
         logging.debug(" Environment set successfully in dir %s" %(self.out_dir))
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(usage='python main.py i o r', epilog='')
-    parser.add_argument("fasta_dir", metavar='i', help="Folder that contains the fasta files")
-    parser.add_argument("output_dir", metavar='o', help="Output folder")
-    parser.add_argument("ref", metavar='r', help="File to be used as reference genome")
-    args = parser.parse_args()
-
     # Setup logging
     #logfile = out_dir / "LOGFILE.log"
     logging.basicConfig(filename=logfile, format='%(asctime)s: %(message)s', level=logging.INFO)
     directory_setup()
-	instance_n = Core_genome_instance(execution_params, ref)
-	instance_n.reciprocal_blast()
-	instance_n.parse_blast_results()
-	instance_n.create_cog_matrix()
-	instance_n_phylo = Phylogenomics_instance(execution_params, ref, instance_name)
-	instance_n_phylo.createCOGFasta()
-	instance_n_phylo.alignCOGs()
-	instance_n_phylo.createSupersequence()
-	instance_n_phylo.filterAln() 
-	instance_n_phylo.computeTree(iqtree=True)
+    # 
+    instance_n = Core_genome_instance(execution_params, ref)
+    instance_n.reciprocal_blast()
+    instance_n.parse_blast_results()
+    instance_n.create_cog_matrix()
+    instance_n_phylo = Phylogenomics_instance(execution_params, ref, instance_name)
+    instance_n_phylo.createCOGFasta()
+    instance_n_phylo.alignCOGs()
+    instance_n_phylo.createSupersequence()
+    instance_n_phylo.filterAln() 
+    instance_n_phylo.computeTree(iqtree=True)
    
