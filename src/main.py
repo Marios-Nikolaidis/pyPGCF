@@ -5,7 +5,7 @@ email: marionik23@gmail.com
 """
 
 import argparse
-from multiprocessing import cpu_count
+import config
 
 parser = argparse.ArgumentParser(
         prog="package",
@@ -23,13 +23,13 @@ subparsers = parser.add_subparsers(dest="K", help="The various modules of the pr
 #)
 
 species_demarcation = subparsers.add_parser("species_demarcation", help="species demarcation")
-species_demarcation.add_argument("--i", help="Genome fasta directory")
+species_demarcation.add_argument("--in", help="Genome fasta directory")
 species_demarcation.add_argument("--o", help="Output directory")
-species_demarcation.add_argument("--cores", help="Number of cores", default=cpu_count()-2)
-species_demarcation.add_argument("--kmer", help="kmer size for fastANI", default=16)
-species_demarcation.add_argument("--fragLen", help="Fragment length for fastANI", default=3000)
-species_demarcation.add_argument("--minFraction", help="Minimum fraction for fastANI", default=0.2)
-species_demarcation.add_argument("--inflation", help="Inflation parameter for mcl", default=2)
+species_demarcation.add_argument("--cores", help="Number of cores", default=config.species_demarcation_cores)
+species_demarcation.add_argument("--kmer", help="kmer size for fastANI", default=config.species_demarcation_kmer)
+species_demarcation.add_argument("--fragLen", help="Fragment length for fastANI", default=config.species_demarcation_fraglen)
+species_demarcation.add_argument("--minFraction", help="Minimum fraction for fastANI", default=config.species_demarcation_minfraction)
+species_demarcation.add_argument("--inflation", help="Inflation parameter for mcl", default=config.species_demarcation_mcl_inflation)
 #
 orthologues = subparsers.add_parser("orthologues", help="orthologues")
 orthologues_basic = orthologues.add_argument_group("Basic options")
@@ -38,7 +38,8 @@ orthologues_basic.add_argument("--o", help="Output directory")
 orthologues_basic.add_argument("--type", help="Type of input", default="protein")
 orthologues_basic.add_argument("--ref", help="Reference strain")
 orthologues_blast = orthologues.add_argument_group("BLAST/DIAMOND options")
-orthologues_blast.add_argument("--cores", help="Number of cores", default=cpu_count()-2)
+orthologues_blast.add_argument("--cores", help="Number of cores", default=config.orthologues_cores)
+orthologues_blast.add_argument("--evalue", help="E-value cut-off", default=config.orthologues_evalue)
 # TODO: Complete
 
 core = subparsers.add_parser("core", help="core")
@@ -63,6 +64,13 @@ eggnog.add_argument("--o", help="Output directory")
 eggnog.add_argument("--core", help="Core proteins table")
 eggnog.add_argument("--eggnog_results", help="Pre-computed eggnog results", action="store_true")
 eggnog.add_argument("--cores", help="Number of cores", default=cpu_count()-2)
+
+# smbgc module
+smbgc = subparsers.add_parser("smbgc", help="smbgc")
+smbgc.add_argument("--i", help="Input fasta directory")
+smbgc.add_argument("--o", help="Output directory")
+smbgc.add_argument("--cores", help="Number of cores", default=cpu_count()-2)
+smbgc.add_argument("--remote", help="Submit queries to antiSMASH web service", action="store_true")
 
 
 args = parser.parse_args()

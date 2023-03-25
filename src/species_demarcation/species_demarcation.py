@@ -7,7 +7,7 @@ import pandas as pd
 def write_tmp_file(files_for_fastani, tmp_file_for_fastani):
     with open(str(tmp_file_for_fastani), "w") as f:
         for file in files_for_fastani:
-            f.write(str(file) + "\n"
+            f.write(str(file) + "\n")
 
 def perform_fastani(org_list, threads, fraglen, min_fraction, kmer_size, fout):
     os.system("fastANI --ql {} --rl {} -t {} -k {} --fragLen {} minFraction {} -o {}".format(org_list, org_list, threads, kmer_size, fraglen, min_fraction, fout))
