@@ -1,0 +1,3 @@
+/home/marios/Lab/core_genome_pipeline/package/species_demarcation/tests/../data/genome2.fasta
+/home/marios/Lab/core_genome_pipeline/package/species_demarcation/tests/../data/genome1.fasta
+/home/marios/Lab/core_genome_pipeline/package/species_demarcation/tests/../data/genome3.fasta
