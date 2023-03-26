@@ -158,11 +158,11 @@ class Orthologues_identifier():
             ref_vs_query_df = pd.read_csv(ref_vs_query_file,  sep="\t", names=c1, usecols=[0, 1, 2, 10] )
             query_vs_ref_df = pd.read_csv(query_vs_ref_file,  sep="\t", names=c2, usecols=[0, 1, 2, 10] )
             
-            ref_vs_query_df.iloc[:, 0] = ref_vs_query_df.iloc[:, 0].astype(str) + "_" + self.ref
-            ref_vs_query_df.iloc[:, 1] = ref_vs_query_df.iloc[:, 1].astype(str) + "_" + fasta_file.name
+            ref_vs_query_df.iloc[:, 0] = ref_vs_query_df.iloc[:, 0].astype(str)
+            ref_vs_query_df.iloc[:, 1] = ref_vs_query_df.iloc[:, 1].astype(str)
     
-            query_vs_ref_df.iloc[:, 0] = query_vs_ref_df.iloc[:, 0].astype(str) + "_" + fasta_file.name
-            query_vs_ref_df.iloc[:, 1] = query_vs_ref_df.iloc[:, 1].astype(str) + "_" + self.ref
+            query_vs_ref_df.iloc[:, 0] = query_vs_ref_df.iloc[:, 0].astype(str)
+            query_vs_ref_df.iloc[:, 1] = query_vs_ref_df.iloc[:, 1].astype(str)
     
             # Blast output
             # qaccver saccver pident length mismatch gapopen qstart qend sstart send evalue bitscore
@@ -174,49 +174,47 @@ class Orthologues_identifier():
                 reciprocal_df = _orthologue_filter(reciprocal_df)
             # Create reciprocal files with headers
             rec_fout = self.out_dir / self.ref / "Best_reciprocal_hits" / (fasta_file.stem + "_BRH.txt")
-            reciprocal_df.to_csv(rec_fout, sep='\t')
-        logging.debug(" Finished parsing results")
+            reciprocal_df.to_csv(rec_fout, sep='\t', index=False)
+        logging.debug("Finished parsing results")
     
-    def create_cog_matrix(self):
+    def create_orthology_matrix(self):
         """
         Create the initial cog matrix with empty (NaN) vectors and replace with the true values
         :return: None
         """
         # Pass all genes of the Refseq into a list
-        ref_fasta_f = self.in_dir / "Protein_fasta_files" / self.ref
-        refgenes = SeqIO.parse(ref_fasta_f, "fasta")
+        refgenes = SeqIO.parse(self.ref_fasta, "fasta")
         # TODO: Writing the files and then reopening them seems kind of waste of resources
         reciprocal_f_dir = self.out_dir / self.ref / "Best_reciprocal_hits"
         reciprocal_files = list(reciprocal_f_dir.glob("*"))
     
-        def _initCogMatrix(refgenes, rec_files):
-            cog_matrix_dict = {gene.id: {} for gene in refgenes}
-            for rec_file in rec_files:
-                _, query_org_name = rec_file.stem.split("_vs_")
-                for gene in cog_matrix_dict:
-                    cog_matrix_dict[gene][query_org_name] = np.nan
-            return cog_matrix_dict
+        def _init_orthology_matrix(refgenes, reciprocal_files):
+            orthology_matrix_dict = {gene.id: {} for gene in refgenes}
+            for reciprocal_file in reciprocal_files:
+                query_genome = reciprocal_file.stem.replace("_BRH", "")
+                for gene in orthology_matrix_dict:
+                    orthology_matrix_dict[gene][query_genome] = np.nan
+            return orthology_matrix_dict
     
-        def _expandCogMatrix(init_cog_matrix_dict, reciprocal_files):
+        def _expand_orthology_matrix(init_orthology_matrix_dict, reciprocal_files):
             """
             Replace the NaN values in the Pandas dataframe with the corresponding values
             :return: expanded cogmatrix as pandas dataframe
             """
             for reciprocal_file in reciprocal_files:
-                _, query_org_name = reciprocal_file.stem.split("_vs_")
+                query_genome = reciprocal_file.stem.replace("_BRH", "")
                 header = True
                 for lines in open(reciprocal_file, mode="r"):
                     if header:
                         header=False
                         continue
                     refseq, queryseq, *_ = lines.rstrip().split("\t")
-                    #refseq = refseq.replace('_' + ref,'') Not necessary anymore
-                    init_cog_matrix_dict[refseq][query_org_name] = queryseq
-            init_cog_matrix = pd.DataFrame.from_dict(init_cog_matrix_dict, orient="index")
-            init_cog_matrix.index.name = "RefSeq"
-            return init_cog_matrix
+                    init_orthology_matrix_dict[refseq][query_genome] = queryseq
+            init_orthology_matrix = pd.DataFrame.from_dict(init_orthology_matrix_dict, orient="index")
+            init_orthology_matrix.index.name = self.ref
+            return init_orthology_matrix
     
-        init_cog_matrix = _initCogMatrix(refgenes, reciprocal_files)
-        total_cog_matrix = _expandCogMatrix(init_cog_matrix, reciprocal_files)
-        total_cog_f = self.out_dir / self.ref / "totalCOGs.csv"
-        total_cog_matrix.to_csv(total_cog_f, sep = '\t', na_rep="X") # Contains all the COGs
+        init_orthology_matrix = _init_orthology_matrix(refgenes, reciprocal_files)
+        orthology_matrix_df = _expand_orthology_matrix(init_orthology_matrix, reciprocal_files)
+        orthology_matrix_f = self.out_dir / self.ref / "OGmatrix.csv"
+        orthology_matrix_df.to_csv(orthology_matrix_f, sep = '\t', na_rep="X") # Contains all the COGs

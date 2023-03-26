@@ -1,5 +1,5 @@
 from pathlib import Path
-import os
+import pandas as pd
 import unittest
 import sys
 
@@ -80,8 +80,20 @@ class TestModule(unittest.TestCase):
         instance.setup()
         instance.parse_blast_results()
 
+    def test_create_orthology_matrix(self):
+        fasta_dir = Path("data/Protein_fasta_files/")
+        out_dir = Path("data/")
+        blast_threads = 4
+        blast_evalue = 1e5
+        blast_method = "diamond"
+        filter = True
+        ref = "GCF_000009045.1"
+        instance = Orthologues_identifier(fasta_dir, out_dir, ref, blast_threads, blast_evalue, blast_method, filter)
+        instance.setup()
+        instance.create_orthology_matrix()
+        orthology_matrix_f = out_dir / "Orthologues" / ref / "OGmatrix.csv"
+        orthology_matrix_df = pd.read_csv(orthology_matrix_f, sep="\t", index_col=0)
+        self.assertIs(orthology_matrix_f.exists(), True)
+        self.assertEqual(orthology_matrix_df.shape[0], 4237)
+        self.assertEqual(orthology_matrix_df.shape[1], 2)
 
-if __name__ == "__main__":
-    mod = TestModule()        
-    mod.test_reciprocal_blast()
-    #mod.test_get_blast_binaries()
