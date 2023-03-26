@@ -1,132 +1,98 @@
 import os
-import re
 import pandas as pd
 from Bio import SeqIO
 from tqdm import tqdm
 import logging
 from pathlib import Path
 import numpy as np
+from typing import Tuple
 
-class Core_genome_instance():
+class Orthologues_identifier():
     def __init__(self, fasta_dir: Path, out_dir: Path, ref: str, 
                  blast_threads: int, blast_evalue: float, blast_method: str,
-                 system: str):
+                 filter: bool):
         self.ref = ref
-        self.out_dir = out_dir
-        self.system = system
+        self.in_dir = fasta_dir.parent
+        self.out_dir = out_dir / "Orthologues"
         self.blast_threads = blast_threads
         self.blast_evalue = blast_evalue
         self.fasta_files = list(fasta_dir.glob("*"))
         self.blast_method = blast_method
-        # What was the purpose of the update_fasta?
-        # Need to remove the ref from the fasta files
-        for x in range(len(self.fasta_files)):
-            if self.fasta_files[x].name == self.ref:
+        self.threads = blast_threads
+        self.filter = filter
+        # Remove the ref from the fasta files
+        for index, item in enumerate(self.fasta_files):
+            if self.ref in item.name:
+                self.ref_fasta = item
+                self.fasta_files.pop(index)
                 break
-        self.fasta_files.pop(x)
 
-    def _get_blast_binaries(self) -> list:
-        if self.system == 'linux':
-            resources_dir = Path('../resources/Linux/')
-            makeblastdb_bin = Path(__file__)/resources_dir/"makeblastdb" #/ .replace(os.path.basename(__file__) + "/", "")
-            blastn_bin = Path(__file__)/resources_dir/"blastn" #/ .replace(os.path.basename(__file__) + "/", "")
-            diamond_bin = Path(__file__)/resources_dir/"diamond" #/ .replace(os.path.basename(__file__) + "/", "")
-        else:
-            raise Exception("Only linux platforms are supported at the moment..")
+    def _set_directories(self) -> None:
+        directories = [
+                self.out_dir / self.ref / "Blast_results",
+                self.out_dir / self.ref / "Best_reciprocal_hits",
+                self.out_dir / self.ref / "Blast_DB",
+                ]
+        for directory in directories:
+            directory.mkdir(exist_ok=True, parents=True)
+        
 
-        print(f"""
-        makeblastdb_bin: {makeblastdb_bin}
-        blastn_bin: {blastn_bin}
-        blastp_bin: {blastp_bin}
-        diamond_bin: {diamond_bin}
-              """)
-        if self.blast_method == "blastn":
-            blast_bin = blastn_bin
-            blast_db_bin = makeblastdb_bin
-        elif self.blast_method == "diamond":
-            blast_bin = diamond_bin
-            blast_db_bin = None
-        else:
+    def _get_blast_binaries(self) -> None:
+        resources_dir = Path('../../resources/')
+        makeblastdb_bin = Path(__file__).parent/resources_dir/"makeblastdb" #/ .replace(os.path.basename(__file__) + "/", "")
+        blastn_bin = Path(__file__).parent/resources_dir/"blastn" #/ .replace(os.path.basename(__file__) + "/", "")
+        diamond_bin = Path(__file__).parent/resources_dir/"diamond" #/ .replace(os.path.basename(__file__) + "/", "")
+
+        if self.blast_method not in ("blastn", "diamond"):
             raise Exception("Homology search method not supported")
-        return [blast_bin, blast_db_bin]
+        self.blast_bin = diamond_bin
+        if self.blast_method == "blastn":
+            self.blast_bin = blastn_bin
+            self.blast_db_bin = makeblastdb_bin
 
-    def _execute_cmd(cmd: str) -> None:
+    def _execute_cmd(self, cmd: str) -> int:
         """Generic function to execute a command"""
         # add logging
         #logging.info(f"Executing command: {cmd}")
-        os.system(cmd)
+        return os.system(cmd)
 
-    def _create_blast_db(self, fasta_file: Path, blast_db_bin: Path, 
-                         threads: int = 4
-                         ) -> database_f: Path :
+    def _create_blast_db(self, fasta_file: Path) -> Tuple[int, Path] :
         """
         Create blast database for a fasta file
         """
-        database_f = self.out_dir / "Blast_DB_dir" / fasta_file.name
-        if self.blast_method == "diamond":
-            cmd = f'{blast_db_bin} makedb --in {fasta_file} --db {database_f} --threads {threads}'
-        elif self.blast_method == "blastp":
-            cmd = f"{blast_db_bin} -in {fasta_file} -dbtype prot -out {database_f}"
-        elif self.blast_method == "blastn":
-            cmd = f"{blast_db_bin} -in {fasta_file} -dbtype nucl -out {database_f}"
-        _execute_cmd(cmd)
-        return database_f
+        database_f = self.out_dir / self.ref / "Blast_DB" / fasta_file.name
+        cmd = f"{self.blast_bin} makedb --in {fasta_file} --db {database_f} --threads {self.threads}" # DIAMOND
+        if self.blast_method == "blastn":
+            cmd = f"{self.blast_db_bin} -in {fasta_file} -dbtype nucl -out {database_f}"
+        database_f = database_f.with_suffix(".faa.dmnd")
+        return self._execute_cmd(cmd), database_f
 
-    def _create_blast_cmd(self, blast_bin: Path, fasta_file: Path, database_f: Path, out_file: Path) -> str:
-        if self.blast_method == "diamond":
-            cmd = f"{blast_bin} blastp --query {fasta_file} --db {database_f} --outfmt 6 --out {out_file} --evalue {self.blast_evalue} --threads {self.blast_threads}"
-        else:
-            cmd = f"{blast_bin} -query {fasta_file} -db {database_f} -outfmt 6 -out {out_file} -evalue {self.blast_evalue} -num_threads {self.blast_threads}"
+    def _create_blast_cmd(self, fasta_file: Path, database_f: Path, out_file: Path) -> str:
+        # DIAMOND case first
+        cmd = f"{self.blast_bin} blastp --query {fasta_file} --db {database_f} --outfmt 6 --out {out_file} --evalue {self.blast_evalue} --threads {self.blast_threads}"
+        if self.blast_method == "blastn":
+            cmd = f"{self.blast_bin} -query {fasta_file} -db {database_f} -outfmt 6 -out {out_file} -evalue {self.blast_evalue} -num_threads {self.blast_threads}"
         return cmd
 
+    def setup(self):
+        self._set_directories()
+        self._get_blast_binaries()
+
     def reciprocal_blast(self):
-        """
-        """
+        """ """
         # Create the refseq blast database
-        blast_bin, blast_db_bin = self._get_blast_binaries()
-        ref_fasta = self.in_dir / self.ref
-        ref_db = self._create_blast_db(ref_fasta, blast_db_bin, self.out_dir)
+        _, ref_db = self._create_blast_db(self.ref_fasta)
 
-        for fasta_file in tqdm(fasta_files, ascii=True, leave=False, desc="Performing reciprocal BLAST"):
+        for fasta_file in tqdm(self.fasta_files, ascii=True, leave=False, desc="Performing reciprocal BLAST"):
             # Create the blast database for the fasta file
-            database_f = self._create_blast_db(fasta_file, blastdb_bin, self.out_dir)
+            _, database_f = self._create_blast_db(fasta_file)
             # Perform the blast one way
-            fout_f = self.out_dir / "Blastp_output" / (self.ref + "_vs_" + fasta_file.name + ".txt"),
-            fout_r = self.out_dir / "Blastp_output" / (fasta_file.name + "_vs_" + self.ref + ".txt"),
-            out=out_dir / "Blastp_output" / (self.ref + "_vs_" + fasta_file.name + ".txt"),
-            forward_blast = self._create_blast_cmd(ref_fasta, blast_bin, database_f, fout)
-            reverse_blast = self._create_blast_cmd(fasta_file, blast_bin, ref_db, fout)
-            _execute_cmd(forward_blast)
-            _execute_cmd(reverse_blast)
-
-        #    fasta_db = NcbimakeblastdbCommandline(cmd=makeblastdb_bin,
-        #                                          dbtype="prot",
-        #                                          input_file= str(fasta_file),
-        #                                          out=out_dir / "Blast_DB_dir" / fasta_file.name,
-        #                                          )
-        #    blastp_one_way = NcbiblastnCommandline(cmd=blastp_bin,
-        #                                            query= str(fasta_file),
-        #                                            db=out_dir / "Blast_DB_dir" / self.ref,
-        #                                            outfmt=6,
-        #                                            out=out_dir / "Blastp_output" / (fasta_file.name + "_vs_" + self.ref + ".txt"),
-        #                                            evalue=evalue,
-        #                                            num_threads = threads
-        #                                            )
-    
-        #    blastp_reverse = query=input_dir / "Fasta_files" / self.ref,
-        #                                            db=out_dir / "Blast_DB_dir" / fasta_file.name,
-        #                                            outfmt=6,
-        #                                            out=out_dir / "Blastp_output" / (self.ref + "_vs_" + fasta_file.name + ".txt"),
-        #                                            evalue=evalue,
-        #                                            num_threads= threads
-        #                                            )
-        #    # Blast output
-        #    # qaccver saccver pident length mismatch gapopen qstart qend sstart send evalue bitscore
-        #    fasta_db()
-        #    blastp_one_way()
-        #    blastp_reverse()
-        #logging.debug(" Finished reciprocal blast ")
-        #return None
+            fout_f = self.out_dir / self.ref / "Blast_results" / (fasta_file.name + "_vs_reference.txt")
+            fout_r = self.out_dir / self.ref / "Blast_results" / (fasta_file.name + "_vs_reference_reverse.txt")
+            forward_blast = self._create_blast_cmd(self.ref_fasta, database_f, fout_f)
+            reverse_blast = self._create_blast_cmd(fasta_file, ref_db, fout_r)
+            self._execute_cmd(forward_blast)
+            self._execute_cmd(reverse_blast)
 
     def parse_blast_results(self):
         """
@@ -134,36 +100,32 @@ class Core_genome_instance():
         First read the files and filter the redundant information for each protein hit, keep the best hit
         Create the reciprocal blast matrices and write into files
         Input: The ref and fasta files
-        Output: Reciprocal files at Working_dir/Reciprocal_files
+        Output: Best reciprocal hits per strain
         Return: None
         """
-        def _filterBestEvalues(df):
+        def _get_best_subject(df: pd.DataFrame) -> pd.DataFrame:
             """
-            Helper function to get the best evalue for each Query protein based on evalue
+            Helper function to keep the best subject hit per query
             Input: Pandas Data frame
             Return: Filtered Pandas data frame
             """
-        # Note: Significant speed improvement
             indeces_to_keep = []
             first_col = df.columns[0]
             for grp in df.groupby(first_col):
                 indeces_to_keep.append(grp[1].index[0])
-            final_df = df.loc[indeces_to_keep]
-            final_df = final_df.reset_index()
-            final_df = final_df.drop("index",axis=1)
-            return final_df
+            return df.loc[indeces_to_keep].reset_index(drop=True)
     
-        def _pidentFilter(df, SD):
+        def _orthologue_filter(df: pd.DataFrame) -> pd.DataFrame:
             """
             Helper function to create the distribution of percent identities for all the genes in the data frame
-            Filter the hits that are not in the +-2 SD range (user defined)
+            Filter the hits that have perc. identity lower than -2 SD
             """
-            pid_std  = df.std( axis=0, numeric_only=True).Pident
-            pid_mean = df.mean(axis=0, numeric_only=True).Pident
-            drop_condition = pid_mean - (SD * pid_std)
+            pid_std  = df.Pident.std( axis=0, numeric_only=True)
+            pid_mean = df.Pident.mean(axis=0, numeric_only=True)
+            drop_condition = pid_mean - (2 * pid_std)
             return df.drop(df[df.Pident < drop_condition].index)
     
-        def _reciprocal_Matrix(ref_vs_query_df, query_vs_ref_df):
+        def _create_reciprocal_matrix(ref_vs_query_df, query_vs_ref_df):
             """
             Helper function which compare the two dataframes given line by line 
             to identify reciprocal hits
@@ -180,17 +142,15 @@ class Core_genome_instance():
             df = pd.concat([case1,case2])
             return df[['RefSeq', 'QuerySeq', 'Pident', 'Evalue']]
     
-        logging.debug(" Parsing BLAST results")
+        logging.debug("Parsing BLAST results")
         fasta_files = self.fasta_files
-        SD = self.params['SD']
         print("Parsing blast output")
     
         for fasta_file in tqdm(fasta_files, ascii=True):
             if fasta_file.name == self.ref:
                 continue
-            
-            ref_vs_query_file = self.out_dir / "Blastp_output" / (self.ref + "_vs_" + fasta_file.name + ".txt")
-            query_vs_ref_file = self.out_dir / "Blastp_output" / (fasta_file.name + "_vs_" + self.ref + ".txt")
+            ref_vs_query_file = self.out_dir / self.ref / "Blast_results" / (fasta_file.name + "_vs_reference.txt")
+            query_vs_ref_file = self.out_dir / self.ref / "Blast_results" / (fasta_file.name + "_vs_reference_reverse.txt")
     
             c1 = ["RefSeq", "QuerySeq", "Pident", "Evalue"]
             c2 = ["QuerySeq", "RefSeq", "Pident", "Evalue"]
@@ -206,15 +166,15 @@ class Core_genome_instance():
     
             # Blast output
             # qaccver saccver pident length mismatch gapopen qstart qend sstart send evalue bitscore
-            tmp_ref_vs_query_df = _filterBestEvalues(ref_vs_query_df)
-            tmp_query_vs_ref_df = _filterBestEvalues(query_vs_ref_df)
+            ref_vs_query_df = _get_best_subject(ref_vs_query_df)
+            query_vs_ref_df = _get_best_subject(query_vs_ref_df)
             
-            reciprocal_df = _reciprocal_Matrix(tmp_ref_vs_query_df, tmp_query_vs_ref_df)
-            reciprocal_df_filt = _pidentFilter(reciprocal_df, SD)
-
+            reciprocal_df = _create_reciprocal_matrix(ref_vs_query_df, query_vs_ref_df)
+            if self.filter:
+                reciprocal_df = _orthologue_filter(reciprocal_df)
             # Create reciprocal files with headers
-            rec_fout = self.out_dir / "Reciprocal_files" / (self.ref + "_vs_" + fasta_file.name + ".reciprocal_file")
-            reciprocal_df_filt.to_csv(path_or_buf=rec_fout, sep='\t')
+            rec_fout = self.out_dir / self.ref / "Best_reciprocal_hits" / (fasta_file.stem + "_BRH.txt")
+            reciprocal_df.to_csv(rec_fout, sep='\t')
         logging.debug(" Finished parsing results")
     
     def create_cog_matrix(self):
@@ -223,10 +183,10 @@ class Core_genome_instance():
         :return: None
         """
         # Pass all genes of the Refseq into a list
-        ref_fasta_f = self.params["in"] / "Fasta_files" / self.ref
+        ref_fasta_f = self.in_dir / "Protein_fasta_files" / self.ref
         refgenes = SeqIO.parse(ref_fasta_f, "fasta")
         # TODO: Writing the files and then reopening them seems kind of waste of resources
-        reciprocal_f_dir = self.out_dir / "Reciprocal_files"
+        reciprocal_f_dir = self.out_dir / self.ref / "Best_reciprocal_hits"
         reciprocal_files = list(reciprocal_f_dir.glob("*"))
     
         def _initCogMatrix(refgenes, rec_files):
@@ -256,12 +216,7 @@ class Core_genome_instance():
             init_cog_matrix.index.name = "RefSeq"
             return init_cog_matrix
     
-    
         init_cog_matrix = _initCogMatrix(refgenes, reciprocal_files)
         total_cog_matrix = _expandCogMatrix(init_cog_matrix, reciprocal_files)
-        columns = total_cog_matrix.columns
-
-        total_cog_f = self.out_dir / 'totalCOGs.csv'
+        total_cog_f = self.out_dir / self.ref / "totalCOGs.csv"
         total_cog_matrix.to_csv(total_cog_f, sep = '\t', na_rep="X") # Contains all the COGs
-        #complete_cog_f = self.out_dir / 'completeCOGs.csv'
-        #complete_cog_matrix.to_csv(complete_cog_f, sep = '\t') # Contains the complete COGs

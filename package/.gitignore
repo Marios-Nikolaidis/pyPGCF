@@ -1,0 +1,12 @@
+orthologues/data
+orthologues/__pycache__
+orthologues/tests/__pycache__
+
+species_demarcation/data
+species_demarcation/__pycache__
+species_demarcation/tests/__pycache__
+
+core/data
+core/__pycache__
+core/tests/__pycache__
+
