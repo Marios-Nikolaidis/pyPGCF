@@ -4,8 +4,7 @@ import os
 import re
 import logging
 import multiprocessing
-from Bio import SeqIO
-from Bio import AlignIO
+from Bio import SeqIO, AlignIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from tqdm import tqdm
@@ -24,13 +23,11 @@ def _alignment(filelist:list):
 
 class Phylogenomics_instance():
 
-    def __init__(self, params, ref, name):
+    def __init__(self, orthology_matrix: Path, cores: int, ):
         self.system = params['sys']
         self.in_dir = params['in']
         self.out_dir = pathlib.Path(params['out']) / name
         self.ref = ref
-        #self.bs_replicates = params['bootstrap']
-        #self.distance = params['distance']
         self.threads = params['phylogenomic_threads']
 
     def createCOGFasta(self,**kwargs):

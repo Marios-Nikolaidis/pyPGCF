@@ -1,5 +1,0 @@
-data/genome2.fasta	data/genome2.fasta	100	1830	1833
-data/genome1.fasta	data/genome1.fasta	100	1397	1397
-data/genome1.fasta	data/genome3.fasta	99.8026	1394	1397
-data/genome3.fasta	data/genome3.fasta	100	1405	1405
-data/genome3.fasta	data/genome1.fasta	99.8135	1390	1405
