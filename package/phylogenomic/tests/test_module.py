@@ -1,69 +1,113 @@
 from pathlib import Path
-
-import pandas as pd
+from Bio import SeqIO
 import unittest
 import sys
 
 sys.path.append("../phylogenomic")
-from phylogenomic import PhylogenomicInstance
+from phylogenomic import Phylogenomic
 
 class TestModule(unittest.TestCase):
-    def test_split_genomes_into_groups(self):
-        indir = Path("data")
-        og_matrix = indir / "OGmatrix.csv"
-        species_file = indir / "FastANI_species_clusters.xlsx"
+    def _cleanup_fasta(self):
+        og_fasta_dir = Path("data") / "Phylogenomic_tree" / "OGs_fasta"
+        for fasta_file in og_fasta_dir.glob("*"):
+            fasta_file.unlink() # For cleaning
+        og_fasta_dir.rmdir()
+
+    def test_create_og_fasta(self):
+        fasta_dir = Path("data/Protein_fasta_files")
+        orthology_matrix_f = Path("data/OGmatrix.csv")
+        cores = 4
         out_dir = Path("data")
-        core_perc = 100
-        instance = Core_identifier(og_matrix, species_file, core_perc, out_dir)
-        instance.split_genomes_into_groups()
-        self.assertEqual(len(instance.group_orgs), 1)
-        self.assertNotIn("GCF_000009045.1", instance.group_orgs)
-        self.assertIn("GCF_019704415.1", instance.group_orgs)
-        self.assertEqual("GCF_000009045.1", instance.ref)
-        self.assertEqual(len(instance.non_group_orgs), 1)
+        resources_dir = Path("../../resources")
+        phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, resources_dir)
+        phylogenomic.setup_directories()
+        phylogenomic.create_og_fasta()
+        og_fasta_dir = Path("data") / "Phylogenomic_tree" / "OGs_fasta"
+        fasta_files = list(og_fasta_dir.glob("*"))
+        self.assertEqual(len(fasta_files), 2137)
+        for fasta_file in fasta_files:
+            fasta_file_parser = SeqIO.parse(str(fasta_file), "fasta")
+            num_records = 0
+            for rec in fasta_file_parser:
+                self.assertGreater(len(rec.seq), 0)
+                num_records += 1 
+            self.assertEqual(num_records, 3)
+        #self._cleanup_fasta()
 
-    def test_calculate_protein_presence(self):
-        indir = Path("data")
-        og_matrix = indir / "OGmatrix.csv"
-        species_file = indir / "FastANI_species_clusters.xlsx"
+    def test_align_og_fasta(self):
+        fasta_dir = Path("data/Protein_fasta_files")
+        orthology_matrix_f = Path("data/OGmatrix.csv")
+        cores = 4
         out_dir = Path("data")
-        core_perc = 100
-        instance = Core_identifier(og_matrix, species_file, core_perc, out_dir)
-        instance.split_genomes_into_groups()
-        presence_df = instance.calculate_protein_presence()
-        num_core = len(presence_df[presence_df["Group orthologues %"] == 100].index.tolist())
-        self.assertEqual(num_core, 4073)
-        specific_prot = "NP_387886.2"
-        print(instance.orthology_df.loc[specific_prot])
-        print(instance.group_orgs)
-        specific_prot_presence = presence_df.loc[specific_prot, "Group orthologues %"]
-        specific_prot_presence_outside = presence_df.loc[specific_prot, "Non group orthologues %"]
-        print(presence_df.loc[specific_prot])
-        self.assertEqual(specific_prot_presence, 100)
-        self.assertEqual(specific_prot_presence_outside, 0)
+        resources_dir = Path("../../resources")
+        phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, resources_dir)
+        phylogenomic.align_og_fasta()
+        og_fasta_dir = Path("data") / "Phylogenomic_tree" / "OGs_fasta_aln"
+        fasta_files = list(og_fasta_dir.glob("*"))
+        self.assertEqual(len(fasta_files), 2137)
+        for fasta_file in fasta_files:
+            fasta_file_parser = SeqIO.parse(str(fasta_file), "fasta")
+            num_records = 0
+            for rec in fasta_file_parser:
+                self.assertGreater(len(rec.seq), 0)
+                num_records += 1 
+            self.assertEqual(num_records, 3)
 
-    # def test_identify_core_proteins(self):
-    #     indir = Path("data")
-    #     og_matrix = indir / "OGmatrix.csv"
-    #     species_file = indir / "FastANI_species_clusters.xlsx"
-    #     out_dir = Path("data")
-    #     core_perc = 100
-    #     instance = Core_identifier(og_matrix, species_file, core_perc, out_dir)
-    #     instance.split_genomes_into_groups()
-    #     presence_df = instance.calculate_protein_presence()
-    #     core_protein_data = instance.identify_core_proteins(presence_df)
-    #
+    def test_create_supersequence_file(self):
+        fasta_dir = Path("data/Protein_fasta_files")
+        orthology_matrix_f = Path("data/OGmatrix.csv")
+        cores = 4
+        out_dir = Path("data")
+        resources_dir = Path("../../resources")
+        phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, resources_dir)
+        phylogenomic.create_supersequence_file()
+        supersequence_file = Path("data") / "Phylogenomic_tree" / "supersequence.fa"
+        supersequence_parser = SeqIO.parse(str(supersequence_file), "fasta")
+        num_records =0 
+        for record in supersequence_parser:
+            num_records += 1
+            self.assertGreater(len(record.seq), 0)
+        self.assertEqual(num_records, 3)
 
-    # def test_split_genomes_into_groups_various_perc(self):
-    #     indir = Path("data")
-    #     og_matrix = indir / "OGmatrix.csv"
-    #     species_file = indir / "FastANI_species_clusters.xlsx"
-    #     out_dir = Path("data")
-    #     core_percents = [100,98,95,90]
-    #     for core_perc in core_percents:
-    #         instance = Core_identifier(og_matrix, species_file, core_perc, out_dir)
-    #         instance.calculate_core()
+    def test_filter_supersequence_aln(self):
+        fasta_dir = Path("data/Protein_fasta_files")
+        orthology_matrix_f = Path("data/OGmatrix.csv")
+        cores = 4
+        out_dir = Path("data")
+        resources_dir = Path("../../resources")
+        phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, resources_dir)
+        phylogenomic.filter_supersequence_aln()
+        supersequence_file = Path("data") / "Phylogenomic_tree" / "supersequence.fa-gb"
+        supersequence_parser = SeqIO.parse(str(supersequence_file), "fasta")
+        num_records =0 
+        for record in supersequence_parser:
+            num_records += 1
+            self.assertGreater(len(record.seq), 0)
+        htm_supersequence_file = Path("data") / "Phylogenomic_tree" / "supersequence.fa-gb.htm"
+        self.assertEqual(htm_supersequence_file.exists(), False)
+ 
+    def test_compute_tree(self):
+        fasta_dir = Path("data/Protein_fasta_files")
+        orthology_matrix_f = Path("data/OGmatrix.csv")
+        cores = 4
+        out_dir = Path("data")
+        resources_dir = Path("../../resources")
+        phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, resources_dir)
+        phylogenomic.compute_tree()
+        phylogenomic.move_iqtree_files()
+        directory_to_check = Path("data/Phylogenomic_tree/iqtree")
+        files = directory_to_check.glob("*")
+        filenames = [f.name for f in files]
+        self.assertEqual(len(filenames), 7)
+        self.assertIn("supersequence_IQTree2.nwk", filenames)
 
-if __name__ == "__main__":
-    test = TestModule()
-    test.test_identify_core_proteins()
+    def test_run_phylogenomic(self):
+        pass
+        fasta_dir = Path("data/Protein_fasta_files")
+        orthology_matrix_f = Path("data/OGmatrix.csv")
+        cores = 4
+        out_dir = Path("data")
+        resources_dir = Path("../../resources")
+        phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, resources_dir, debug=True)
+        return_code = phylogenomic.run_phylogenomic()
+        self.assertEqual(return_code, 0)

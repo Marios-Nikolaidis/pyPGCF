@@ -1,27 +1,22 @@
 import pandas as pd
 from numpy import nan as np_nan
 from pathlib import Path
-from typing import List
+from typing import List, Union
 import os
-import logging
 #import re
-#import multiprocessing
-#from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 from Bio import SeqIO, AlignIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-
 def _execute_cmd(cmd: str):
     os.system(cmd)
 
-class PhylogenomicInstance():
-    def __init__(self, orthology_matrix_f: Path, cores: int, system: str, fasta_dir: Path, out_dir: Path, resources_dir: Path):
+class Phylogenomic():
+    def __init__(self, orthology_matrix_f: Path, cores: int, fasta_dir: Path, out_dir: Path, resources_dir: Path, debug: bool= False):
         orthology_matrix = pd.read_csv(orthology_matrix_f, sep="\t", index_col=0)
-        self.system = system
         self.fasta_dir = fasta_dir
-        self.out_dir = out_dir / "phylogenomic_tree"
+        self.out_dir = out_dir / "Phylogenomic_tree"
         self.og_fasta_dir = self.out_dir / "OGs_fasta"
         self.og_fasta_dir_aln = self.out_dir / "OGs_fasta_aln"
         self.iqtree_results_dir = self.out_dir / "iqtree"
@@ -32,6 +27,7 @@ class PhylogenomicInstance():
         self.muscle_bin_path = resources_dir / "muscle3.8.31"
         self.gblocks_bin_path = resources_dir / "Gblocks"
         self.iqtree_bin_path = resources_dir / "iqtree2"
+        self.debug = debug
 
     def setup_directories(self):
         self.out_dir.mkdir(exist_ok=True, parents=True)
@@ -39,30 +35,32 @@ class PhylogenomicInstance():
         self.og_fasta_dir_aln.mkdir(exist_ok=True, parents=True)
         self.iqtree_results_dir.mkdir(exist_ok=True, parents=True)
 
+    def _turn_orthology_matrix_to_binary(self):
+        self.orthology_matrix = self.orthology_matrix.applymap(lambda x: np_nan if x == "X" else x)
+
     def create_og_fasta(self):
         """
         Create a fasta file for each cluster of orthologous genes
         :return: None
         """
-        self.orthology_matrix.applymap(lambda x: np_nan if x == "X" else x)
-        cog_matrix = self.orthology_matrix.dropna()
-        organisms: List = [self.ref]
-        organisms.extend(cog_matrix.columns.tolist())
+        self._turn_orthology_matrix_to_binary()
+        self.orthology_matrix = self.orthology_matrix.dropna()
+        organisms: List = [self.orthology_matrix.index.name]
+        organisms.extend(self.orthology_matrix.columns.tolist())
         fasta_files = self.fasta_dir.glob("*")
         fasta_files_dict = {f.stem:f for f in fasta_files}
         for org_count, organism in enumerate(organisms):
             fasta_file = fasta_files_dict[organism]
             protein_records = SeqIO.to_dict(SeqIO.parse(open(fasta_file,"r"), format="fasta"))
             if org_count == 0:
-                print(fasta_file)
-                genes = list(cog_matrix.index)
+                genes = list(self.orthology_matrix.index)
             else:
-                genes = list(cog_matrix[organism].values)
+                genes = list(self.orthology_matrix[organism].values)
             for x, gene in enumerate(genes):
                 info = protein_records[gene]
                 info.description = ""
                 info.name = ""
-                info.id = info.id + "-" + organism
+                info.id = info.id + "-" + organism # TODO: Maybe just rename everything based on organism?
                 fout = self.og_fasta_dir / ("OG" + str(x) + ".fa")
                 fout_handle = open(fout, "a")
                 SeqIO.write(info, fout_handle, "fasta")
@@ -76,7 +74,7 @@ class PhylogenomicInstance():
         orthologous_groups_files = list(self.og_fasta_dir.glob("*"))
         commands = []
         for file in orthologous_groups_files:
-            cmd = " ".join([str(self.muscle_bin_path),
+            cmd = " ".join(["muscle",
                             "-in",
                             str(file),
                             "-out",
@@ -115,7 +113,7 @@ class PhylogenomicInstance():
         init_supersequence_file(self.ref, self.genomes, superseq_file)
         superseq_records = SeqIO.to_dict(AlignIO.read(str(superseq_file), "fasta"))
 
-        aln_files = self.fasta_dir.glob("*")
+        aln_files = self.og_fasta_dir_aln.glob("*")
         # aln_file = [str(f) for f in aln_files]
         # aln_files = _sortAlphanum(aln_files) 
         # To know that this is the correct order of genes
@@ -131,13 +129,15 @@ class PhylogenomicInstance():
         SeqIO.write(superseq_seqrecords, superseq_file_handle_out, "fasta")
     
     
-    def filter_aln(self):
+    def filter_supersequence_aln(self):
         """ Filter the supersequence alignment using Gblocks with default parameters """
         cmd = " ".join([str(self.gblocks_bin_path), 
                         str(self.out_dir / "supersequence.fa"),
                         "-s=y -e=-gb -p=y" 
                         ])
         _execute_cmd(cmd)
+        htm_file = self.out_dir / "supersequence.fa-gb.htm"
+        htm_file.unlink()
     
     def compute_tree(self):
         """
@@ -149,18 +149,21 @@ class PhylogenomicInstance():
                         str(self.cores), " -s ", str(supersequence_file)])
         _execute_cmd(cmd)
 
-    def run_phylogenomic(self) -> int:
+    def move_iqtree_files(self):
+        files = list(self.out_dir.glob("supersequence.fa-gb.*"))
+        for f in files:
+            renamed = self.iqtree_results_dir / f.name
+            if f.suffix == ".treefile":
+                renamed = self.iqtree_results_dir / "supersequence_IQTree2.nwk"
+            f.rename(renamed)
+
+    def run_phylogenomic(self) -> Union[None, int]:
         self.setup_directories()
         self.create_og_fasta()
-        logging.debug("Created a file for each orthologous group. Dir %s"  %(self.out_dir))
-        logging.debug(" Initiating alignment of individual orthologous groups ")
         self.align_og_fasta()
-        logging.debug(" Finished COG alignments in dir %s" %(self.out_dir))
         self.create_supersequence_file()
-        logging.debug("Created the supersequence file")
-        self.filter_aln()
-        logging.debug(" Filtered the alignment with GBlocks")
-        logging.debug(f" Initiating computation of phylogenomic tree")
+        self.filter_supersequence_aln()
         self.compute_tree()
-        logging.debug("Computed Phylogenomic Tree ")
-        return 0
+        self.move_iqtree_files()
+        if self.debug:
+            return 0
