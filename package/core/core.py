@@ -37,8 +37,9 @@ class Core_identifier():
             self.group_orgs = group_orgs
             self.non_group_orgs = []
             return
-        ref_cluster = self.species_df.loc[self.ref].values[0]
-        group_orgs = self.species_df[self.species_df["FastANI_species"] == ref_cluster].index.tolist()
+        species_col = "FastANI_species"
+        ref_cluster = self.species_df.loc[self.ref, species_col]
+        group_orgs = self.species_df[self.species_df[species_col] == ref_cluster].index.tolist()
         group_orgs.remove(self.ref)
         non_group_orgs = self.species_df[self.species_df["FastANI_species"] != ref_cluster].index.tolist()
         self.group_orgs = group_orgs
@@ -51,7 +52,7 @@ class Core_identifier():
         tmpdf["Group orthologues %"] = round(
             (tmpdf["Group orthologues"] / (len(self.group_orgs) + 1)) * 100, 2
         )
-        tmpdf["Non group orthologues"] = self.orthology_df[self.non_group_orgs].count(axis=1)
+        tmpdf["Non group orthologues"] = self.orthology_df[self.non_group_orgs].sum(axis=1)
         tmpdf["Non group orthologues %"] = round(
             tmpdf["Non group orthologues"] / len(self.non_group_orgs) * 100, 2
         )
@@ -80,4 +81,4 @@ class Core_identifier():
             fout = self.outdir / f"{self.ref}_species_core.xlsx"
         core_protein_data_df.to_excel(fout)
         return core_protein_data_df, fout
-    
+

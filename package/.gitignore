@@ -14,3 +14,7 @@ phylogenomic/data/*
 phylogenomic/__pycache__
 phylogenomic/tests/__pycache__
 
+eggNOG/data/*
+eggNOG/__pycache__
+eggNOG/tests/__pycache__
+

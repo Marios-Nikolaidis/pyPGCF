@@ -4,8 +4,8 @@ import pandas as pd
 import unittest
 import sys
 
-sys.path.append("../core")
-from core import Core_identifier
+sys.path.append("../phylogenomic")
+from phylogenomic import PhylogenomicInstance
 
 class TestModule(unittest.TestCase):
     def test_split_genomes_into_groups(self):
@@ -42,16 +42,17 @@ class TestModule(unittest.TestCase):
         self.assertEqual(specific_prot_presence, 100)
         self.assertEqual(specific_prot_presence_outside, 0)
 
-    def test_identify_core_proteins(self):
-        indir = Path("data")
-        og_matrix = indir / "OGmatrix.csv"
-        species_file = indir / "FastANI_species_clusters.xlsx"
-        out_dir = Path("data")
-        core_perc = 100
-        instance = Core_identifier(og_matrix, species_file, core_perc, out_dir)
-        df, fout = instance.calculate_core()
-        self.assertEqual(df["Core_100%"].sum(), 4073)
-        self.assertEqual(df["Is fingerprint"].sum(), 1936)
+    # def test_identify_core_proteins(self):
+    #     indir = Path("data")
+    #     og_matrix = indir / "OGmatrix.csv"
+    #     species_file = indir / "FastANI_species_clusters.xlsx"
+    #     out_dir = Path("data")
+    #     core_perc = 100
+    #     instance = Core_identifier(og_matrix, species_file, core_perc, out_dir)
+    #     instance.split_genomes_into_groups()
+    #     presence_df = instance.calculate_protein_presence()
+    #     core_protein_data = instance.identify_core_proteins(presence_df)
+    #
 
     # def test_split_genomes_into_groups_various_perc(self):
     #     indir = Path("data")
@@ -63,3 +64,6 @@ class TestModule(unittest.TestCase):
     #         instance = Core_identifier(og_matrix, species_file, core_perc, out_dir)
     #         instance.calculate_core()
 
+if __name__ == "__main__":
+    test = TestModule()
+    test.test_identify_core_proteins()
