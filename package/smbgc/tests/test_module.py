@@ -1,39 +1,37 @@
 import unittest
 import sys
-from pathlib import Path
-from dataclasses import dataclass
 
 sys.path.append("../smbgc")
 
-from smbgc import (
-        smBGCWeb
-)
+from smbgc import smBGCInstaller, smBGCLocalRunner, smBGCParser
 from pathlib import Path
 
 class TestModule(unittest.TestCase):
-    def test_create_input_for_fastani(self):
-        web_mod = smBGCWeb()
-        input_file = Path("data/GCF_000009045.1.fna")
-        tracking_dict = web_mod.post(input_file)
-        print(tracking_dict)
-        web_mod.keep_track_of_pending(tracking_dict)
+    pass
+    def test_installation(self):
+        debug = True
+        installer = smBGCInstaller(debug)
+        installer.install_antismash()
+        installer.install_databases()
+
+    def test_local_runner(self):
+        genome_fasta_dir = Path("data/Genome_fasta_files")
+        out_dir = Path("data")
+        cores = 4
+        strictness = "strict"
+        genefinding_tool = "prodigal"
+        runner = smBGCLocalRunner(genome_fasta_dir, out_dir, cores, strictness, genefinding_tool)
+        runner.analyze_genomes()
 
 
+    def test_parser_gather_results(self):
+        out_dir = Path("data/")
+        cores = 4
+        parser = smBGCParser(out_dir, cores)
+        parser.gather_results()
+        # Check if dataframe has correct shape
+        self.assertEqual(parser.final_df.shape[0], 52)
+        # Check if file was created
+        xl_file = out_dir / "smBGC" / "antiSMASH_results.xlsx"
+        self.assertEqual(xl_file.exists(), True)
 
-
-
-
-
-
-
-#fastani_fout = data_dir/"FastANI.tsv"
-#perform_fastani(org_list, cores, fraglen, minfraction, kmer, fastani_fout)
-## Need to read the output and check that all lines are correct
-#
-#fastani_for_mcl = prepare_input_for_mcl(fastani_fout)
-## Need to read the file and check that all lines are correct
-#
-#mcl_out = run_mcl(fastani_for_mcl, mcl_inflation, cores)
-#
-#parse_mcx_output(mcl_out)
-#
