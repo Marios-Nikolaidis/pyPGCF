@@ -13,7 +13,7 @@ def _execute_cmd(cmd: str):
     os.system(cmd)
 
 class Phylogenomic():
-    def __init__(self, orthology_matrix_f: Path, cores: int, fasta_dir: Path, out_dir: Path, resources_dir: Path, debug: bool= False):
+    def __init__(self, orthology_matrix_f: Path, cores: int, fasta_dir: Path, out_dir: Path, no_keep_fasta:bool, tree_model: Union[str, None], debug: bool= False):
         orthology_matrix = pd.read_csv(orthology_matrix_f, sep="\t", index_col=0)
         self.fasta_dir = fasta_dir
         self.out_dir = out_dir / "Phylogenomic_tree"
@@ -24,10 +24,11 @@ class Phylogenomic():
         self.ref = orthology_matrix.index.name
         self.genomes = orthology_matrix.columns.tolist()
         self.cores = cores
-        self.muscle_bin_path = resources_dir / "muscle3.8.31"
-        self.gblocks_bin_path = resources_dir / "Gblocks"
-        self.iqtree_bin_path = resources_dir / "iqtree2"
+        self.no_keep_fasta = no_keep_fasta
         self.debug = debug
+        self.tree_model = tree_model
+        if tree_model == None:
+            self.tree_model = "TEST"
 
     def setup_directories(self):
         self.out_dir.mkdir(exist_ok=True, parents=True)
@@ -131,7 +132,7 @@ class Phylogenomic():
     
     def filter_supersequence_aln(self):
         """ Filter the supersequence alignment using Gblocks with default parameters """
-        cmd = " ".join([str(self.gblocks_bin_path), 
+        cmd = " ".join(["Gblocks",
                         str(self.out_dir / "supersequence.fa"),
                         "-s=y -e=-gb -p=y" 
                         ])
@@ -144,9 +145,13 @@ class Phylogenomic():
         Compute the phylogenomic tree using IQtree2
         """
         supersequence_file = self.out_dir / "supersequence.fa-gb"
-        cmd = "".join([str(self.iqtree_bin_path),
-                        " -m TEST -merit AIC -alrt 1000 -T ",
-                        str(self.cores), " -s ", str(supersequence_file)])
+        cmd = " ".join(["iqtree2",
+                        f"-m {self.tree_model}",
+                        "-merit AIC",
+                        "-alrt 1000",
+                        f"-T {str(self.cores)}",
+                        f"-s {supersequence_file}"
+                        ])
         _execute_cmd(cmd)
 
     def move_iqtree_files(self):
@@ -157,6 +162,14 @@ class Phylogenomic():
                 renamed = self.iqtree_results_dir / "supersequence_IQTree2.nwk"
             f.rename(renamed)
 
+    def clean_fasta_files(self):
+        directories_to_clean = [self.fasta_dir, self.og_fasta_dir_aln]
+        for directory in directories_to_clean:
+            files = directory.glob("*")
+            for f in files:
+                f.unlink()
+            directory.unlink()
+
     def run_phylogenomic(self) -> Union[None, int]:
         self.setup_directories()
         self.create_og_fasta()
@@ -165,5 +178,7 @@ class Phylogenomic():
         self.filter_supersequence_aln()
         self.compute_tree()
         self.move_iqtree_files()
+        if self.no_keep_fasta:
+            self.clean_fasta_files()
         if self.debug:
             return 0
