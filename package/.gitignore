@@ -15,6 +15,16 @@ phylogenomic/__pycache__
 phylogenomic/tests/__pycache__
 
 eggNOG/data/*
-eggNOG/__pycache__
+eggNOG/__pycache__/
+eggNOG/__pycache__/*
 eggNOG/tests/__pycache__
 
+
+smbgc/data/*
+smbgc/__pycache__/
+smbgc/__pycache__/*
+smbgc/tests/__pycache__/
+smbgc/tests/__pycache__/*
+smbgc/archives
+
+prepare.py

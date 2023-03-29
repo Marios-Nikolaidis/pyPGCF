@@ -5,33 +5,30 @@ from tqdm import tqdm
 import logging
 from pathlib import Path
 import numpy as np
-from typing import Tuple
+from typing import Tuple, Union
 
 class Orthologues_identifier():
-    def __init__(self, fasta_dir: Path, out_dir: Path, ref: str, 
-                 blast_threads: int, blast_evalue: float, blast_method: str,
-                 filter: bool):
+    def __init__(self, fasta_dir: Path, out_dir: Path, ref: Union[str, None], 
+                 ref_list: Union[str, None], input_type: str,
+                 cores: int, evalue: float, dmnd_sensitivity: str,
+                 no_filter: bool):
         self.ref = ref
+        self.ref_list = ref_list
         self.in_dir = fasta_dir.parent
         self.out_dir = out_dir / "Orthologues"
-        self.blast_threads = blast_threads
-        self.blast_evalue = blast_evalue
+        self.blast_cores = cores
+        self.blast_evalue = evalue
+        self.dmnd_sensitivity = dmnd_sensitivity
         self.fasta_files = list(fasta_dir.glob("*"))
-        self.blast_method = blast_method
-        self.threads = blast_threads
-        self.filter = filter
-        # Remove the ref from the fasta files
-        for index, item in enumerate(self.fasta_files):
-            if self.ref in item.name:
-                self.ref_fasta = item
-                self.fasta_files.pop(index)
-                break
+        self.input_type = input_type
+        #self.threads = cores
+        self.no_filter = no_filter
 
-    def _set_directories(self) -> None:
+    def _set_directories(self, ref) -> None:
         directories = [
-                self.out_dir / self.ref / "Blast_results",
-                self.out_dir / self.ref / "Best_reciprocal_hits",
-                self.out_dir / self.ref / "Blast_DB",
+                self.out_dir / ref / "Blast_results",
+                self.out_dir / ref / "Best_reciprocal_hits",
+                self.out_dir / ref / "Blast_DB",
                 ]
         for directory in directories:
             directory.mkdir(exist_ok=True, parents=True)
@@ -43,58 +40,70 @@ class Orthologues_identifier():
         blastn_bin = Path(__file__).parent/resources_dir/"blastn" #/ .replace(os.path.basename(__file__) + "/", "")
         diamond_bin = Path(__file__).parent/resources_dir/"diamond" #/ .replace(os.path.basename(__file__) + "/", "")
 
-        if self.blast_method not in ("blastn", "diamond"):
-            raise Exception("Homology search method not supported")
         self.blast_bin = diamond_bin
-        if self.blast_method == "blastn":
+        if self.input_type == "nucl":
             self.blast_bin = blastn_bin
             self.blast_db_bin = makeblastdb_bin
 
     def _execute_cmd(self, cmd: str) -> int:
         """Generic function to execute a command"""
-        # add logging
-        #logging.info(f"Executing command: {cmd}")
         return os.system(cmd)
 
-    def _create_blast_db(self, fasta_file: Path) -> Tuple[int, Path] :
+    def _create_blast_db(self, ref: str, fasta_file: Path) -> Tuple[int, Path] :
         """
         Create blast database for a fasta file
         """
-        database_f = self.out_dir / self.ref / "Blast_DB" / fasta_file.name
-        cmd = f"{self.blast_bin} makedb --in {fasta_file} --db {database_f} --threads {self.threads}" # DIAMOND
-        if self.blast_method == "blastn":
+        database_f = self.out_dir / ref / "Blast_DB" / fasta_file.name
+        cmd = f"{self.blast_bin} makedb --in {fasta_file} --db {database_f} --threads {self.blast_cores}" # DIAMOND
+        if self.input_type == "nucl":
             cmd = f"{self.blast_db_bin} -in {fasta_file} -dbtype nucl -out {database_f}"
         database_f = database_f.with_suffix(".faa.dmnd")
         return self._execute_cmd(cmd), database_f
 
     def _create_blast_cmd(self, fasta_file: Path, database_f: Path, out_file: Path) -> str:
         # DIAMOND case first
-        cmd = f"{self.blast_bin} blastp --query {fasta_file} --db {database_f} --outfmt 6 --out {out_file} --evalue {self.blast_evalue} --threads {self.blast_threads}"
-        if self.blast_method == "blastn":
-            cmd = f"{self.blast_bin} -query {fasta_file} -db {database_f} -outfmt 6 -out {out_file} -evalue {self.blast_evalue} -num_threads {self.blast_threads}"
+        cmd = f"{self.blast_bin} blastp --query {fasta_file} --db {database_f} --outfmt 6 --out {out_file} --evalue {self.blast_evalue} --threads {self.blast_cores}"
+        if self.input_type == "nucl":
+            cmd = f"{self.blast_bin} -query {fasta_file} -db {database_f} -outfmt 6 -out {out_file} -evalue {self.blast_evalue} -num_threads {self.blast_cores}"
         return cmd
 
     def setup(self):
-        self._set_directories()
+        if self.ref != None:
+            self._set_directories(self.ref)
+        if self.ref != None:
+            list_in = open(self.ref_list, "r")
+            for ref in list_in:
+                self._set_directories(ref.rstrip())
+            list_in.close()
         self._get_blast_binaries()
 
-    def reciprocal_blast(self):
+    def reciprocal_blast(self, ref:str):
         """ """
         # Create the refseq blast database
-        _, ref_db = self._create_blast_db(self.ref_fasta)
+        ref_fasta = None
+        for fasta_file in self.fasta_files:
+            if ref == fasta_file.stem:
+                ref_fasta = fasta_file
+        if ref_fasta == None:
+            raise FileNotFoundError(f"{ref} is not in input fasta file names")
+
+        _, ref_db = self._create_blast_db(ref, ref_fasta)
 
         for fasta_file in tqdm(self.fasta_files, ascii=True, leave=False, desc="Performing reciprocal BLAST"):
+            if ref == fasta_file.stem:
+                continue
             # Create the blast database for the fasta file
-            _, database_f = self._create_blast_db(fasta_file)
+            _, database_f = self._create_blast_db(ref, fasta_file)
             # Perform the blast one way
-            fout_f = self.out_dir / self.ref / "Blast_results" / (fasta_file.name + "_vs_reference.txt")
-            fout_r = self.out_dir / self.ref / "Blast_results" / (fasta_file.name + "_vs_reference_reverse.txt")
-            forward_blast = self._create_blast_cmd(self.ref_fasta, database_f, fout_f)
+            fout_f = self.out_dir / ref / "Blast_results" / (fasta_file.name + "_vs_reference.txt")
+            fout_r = self.out_dir / ref / "Blast_results" / (fasta_file.name + "_vs_reference_reverse.txt")
+            forward_blast = self._create_blast_cmd(ref_fasta, database_f, fout_f)
             reverse_blast = self._create_blast_cmd(fasta_file, ref_db, fout_r)
             self._execute_cmd(forward_blast)
             self._execute_cmd(reverse_blast)
+        return ref_fasta
 
-    def parse_blast_results(self):
+    def parse_blast_results(self, ref:str):
         """
         Reads the txt blast output and create the reciprocal table
         First read the files and filter the redundant information for each protein hit, keep the best hit
@@ -147,10 +156,10 @@ class Orthologues_identifier():
         print("Parsing blast output")
     
         for fasta_file in tqdm(fasta_files, ascii=True):
-            if fasta_file.name == self.ref:
+            if fasta_file.name == ref:
                 continue
-            ref_vs_query_file = self.out_dir / self.ref / "Blast_results" / (fasta_file.name + "_vs_reference.txt")
-            query_vs_ref_file = self.out_dir / self.ref / "Blast_results" / (fasta_file.name + "_vs_reference_reverse.txt")
+            ref_vs_query_file = self.out_dir / ref / "Blast_results" / (fasta_file.name + "_vs_reference.txt")
+            query_vs_ref_file = self.out_dir / ref / "Blast_results" / (fasta_file.name + "_vs_reference_reverse.txt")
     
             c1 = ["RefSeq", "QuerySeq", "Pident", "Evalue"]
             c2 = ["QuerySeq", "RefSeq", "Pident", "Evalue"]
@@ -170,22 +179,22 @@ class Orthologues_identifier():
             query_vs_ref_df = _get_best_subject(query_vs_ref_df)
             
             reciprocal_df = _create_reciprocal_matrix(ref_vs_query_df, query_vs_ref_df)
-            if self.filter:
+            if not self.no_filter: # No_filtering is false
                 reciprocal_df = _orthologue_filter(reciprocal_df)
             # Create reciprocal files with headers
-            rec_fout = self.out_dir / self.ref / "Best_reciprocal_hits" / (fasta_file.stem + "_BRH.txt")
+            rec_fout = self.out_dir / ref / "Best_reciprocal_hits" / (fasta_file.stem + "_BRH.txt")
             reciprocal_df.to_csv(rec_fout, sep='\t', index=False)
         logging.debug("Finished parsing results")
     
-    def create_orthology_matrix(self):
+    def create_orthology_matrix(self, ref, ref_fasta):
         """
         Create the initial cog matrix with empty (NaN) vectors and replace with the true values
         :return: None
         """
         # Pass all genes of the Refseq into a list
-        refgenes = SeqIO.parse(self.ref_fasta, "fasta")
+        refgenes = SeqIO.parse(str(ref_fasta), "fasta")
         # TODO: Writing the files and then reopening them seems kind of waste of resources
-        reciprocal_f_dir = self.out_dir / self.ref / "Best_reciprocal_hits"
+        reciprocal_f_dir = self.out_dir / ref / "Best_reciprocal_hits"
         reciprocal_files = list(reciprocal_f_dir.glob("*"))
     
         def _init_orthology_matrix(refgenes, reciprocal_files):
@@ -211,10 +220,26 @@ class Orthologues_identifier():
                     refseq, queryseq, *_ = lines.rstrip().split("\t")
                     init_orthology_matrix_dict[refseq][query_genome] = queryseq
             init_orthology_matrix = pd.DataFrame.from_dict(init_orthology_matrix_dict, orient="index")
-            init_orthology_matrix.index.name = self.ref
+            init_orthology_matrix.index.name = ref
             return init_orthology_matrix
     
         init_orthology_matrix = _init_orthology_matrix(refgenes, reciprocal_files)
         orthology_matrix_df = _expand_orthology_matrix(init_orthology_matrix, reciprocal_files)
-        orthology_matrix_f = self.out_dir / self.ref / "OGmatrix.csv"
+        orthology_matrix_f = self.out_dir / ref / "OGmatrix.csv"
         orthology_matrix_df.to_csv(orthology_matrix_f, sep = '\t', na_rep="X") # Contains all the COGs
+
+    def calculate_orthologues(self):
+        refs = []
+        if self.ref != None:
+            ref = self.ref
+            refs.append(ref)
+        if self.ref_list != None:
+            list_in = open(self.ref_list, "r")
+            for ref in list_in:
+                refs.append(ref)
+            list_in.close()
+        for ref in refs:
+            ref_fasta = self.reciprocal_blast(ref)
+            self.parse_blast_results(ref)
+            self.create_orthology_matrix(ref, ref_fasta)
+

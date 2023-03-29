@@ -75,6 +75,7 @@ class Core_identifier():
         # Identify the core proteins
         core_protein_data = self.identify_core_proteins(final_df)
         core_protein_data_df = pd.DataFrame.from_dict(core_protein_data, orient="index")
+        core_protein_data_df.index.name = self.ref
         if self.genus:
             fout = self.outdir / f"{self.ref}_core.xlsx"
         else:

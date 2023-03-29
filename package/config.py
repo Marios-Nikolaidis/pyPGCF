@@ -16,21 +16,21 @@ species_demarcation_mcl_inflation = 2
 ## 2. Orthologues configs
 orthologues_cores = 6
 orthologues_evalue = 1e-5
-orthologues_SD_filter_value = 2
+orthologues_dmnd_sensitivity = "very-sensitive"
 
-#def _updateParams(param_file, params):
-#
-#	for lines in param_csv:
-#        param_csv = csv.reader(open(param_file, "r"), delimiter="\t")
-#		key, value = lines
-#		params[key] = value
-#	
-#	if params["out"] == "": params["out"] = params["in"]
-#	params["in"] = pathlib.Path(params["in"])
-#	params["out"] = pathlib.Path(params["out"])
-#	# Gather the fasta files for the analysis
-#	fasta_files = list((params["in"] / "Fasta_files").glob("*"))
-#	params["fasta_files"] = fasta_files
-#	
-#	return params
-#
+## 3. Core proteins
+core_core_perc = 100
+
+## 4. Phylogenomic
+phylogenomic_cores = cpu_count() - 2
+
+## 5. eggNOG
+eggnog_cores = cpu_count() - 2
+eggnog_pident = 40
+eggnog_scov = 20
+eggnog_qcov = 20
+
+## 6. smBGC
+smbgc_cores = 6
+smbgc_strictness = "strict"
+smbgc_genefinding_tool = "prodigal"
