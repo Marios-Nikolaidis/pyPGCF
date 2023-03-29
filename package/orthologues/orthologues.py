@@ -62,7 +62,17 @@ class Orthologues_identifier():
 
     def _create_blast_cmd(self, fasta_file: Path, database_f: Path, out_file: Path) -> str:
         # DIAMOND case first
+        added_sensitivity = " --very-sensitive"
+        if self.dmnd_sensitivity == "sensitive":
+            added_sensitivity = " --sensitive"
+        if self.dmnd_sensitivity == "mid_sensitive":
+            added_sensitivity = " --mid-sensitive"
+        if self.dmnd_sensitivity == "more_sensitive":
+            added_sensitivity = " --more-sensitive"
+        if self.dmnd_sensitivity == "ultra_sensitive":
+            added_sensitivity = " --ultra-sensitive"
         cmd = f"{self.blast_bin} blastp --query {fasta_file} --db {database_f} --outfmt 6 --out {out_file} --evalue {self.blast_evalue} --threads {self.blast_cores}"
+        cmd += added_sensitivity
         if self.input_type == "nucl":
             cmd = f"{self.blast_bin} -query {fasta_file} -db {database_f} -outfmt 6 -out {out_file} -evalue {self.blast_evalue} -num_threads {self.blast_cores}"
         return cmd
@@ -70,7 +80,7 @@ class Orthologues_identifier():
     def setup(self):
         if self.ref != None:
             self._set_directories(self.ref)
-        if self.ref != None:
+        if self.ref_list != None:
             list_in = open(self.ref_list, "r")
             for ref in list_in:
                 self._set_directories(ref.rstrip())
