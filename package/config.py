@@ -1,4 +1,4 @@
-# Configuration file for the pipeline
+# Default configurations for the modules
 # By M. Nikolaidis
 
 from sys import platform as platform
