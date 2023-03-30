@@ -18,8 +18,10 @@ class TestModule(unittest.TestCase):
         orthology_matrix_f = Path("data/OGmatrix.csv")
         cores = 4
         out_dir = Path("data")
-        resources_dir = Path("../../resources")
-        phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, resources_dir)
+        no_keep_fasta = False
+        tree_model = None
+        phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, no_keep_fasta, tree_model, debug=True)
+        
         phylogenomic.setup_directories()
         phylogenomic.create_og_fasta()
         og_fasta_dir = Path("data") / "Phylogenomic_tree" / "OGs_fasta"
@@ -39,8 +41,9 @@ class TestModule(unittest.TestCase):
         orthology_matrix_f = Path("data/OGmatrix.csv")
         cores = 4
         out_dir = Path("data")
-        resources_dir = Path("../../resources")
-        phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, resources_dir)
+        no_keep_fasta = False
+        tree_model = None
+        phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, no_keep_fasta, tree_model, debug=True)
         phylogenomic.align_og_fasta()
         og_fasta_dir = Path("data") / "Phylogenomic_tree" / "OGs_fasta_aln"
         fasta_files = list(og_fasta_dir.glob("*"))
@@ -58,8 +61,9 @@ class TestModule(unittest.TestCase):
         orthology_matrix_f = Path("data/OGmatrix.csv")
         cores = 4
         out_dir = Path("data")
-        resources_dir = Path("../../resources")
-        phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, resources_dir)
+        no_keep_fasta = False
+        tree_model = None
+        phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, no_keep_fasta, tree_model, debug=True)
         phylogenomic.create_supersequence_file()
         supersequence_file = Path("data") / "Phylogenomic_tree" / "supersequence.fa"
         supersequence_parser = SeqIO.parse(str(supersequence_file), "fasta")
@@ -74,8 +78,9 @@ class TestModule(unittest.TestCase):
         orthology_matrix_f = Path("data/OGmatrix.csv")
         cores = 4
         out_dir = Path("data")
-        resources_dir = Path("../../resources")
-        phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, resources_dir)
+        no_keep_fasta = False
+        tree_model = None
+        phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, no_keep_fasta, tree_model, debug=True)
         phylogenomic.filter_supersequence_aln()
         supersequence_file = Path("data") / "Phylogenomic_tree" / "supersequence.fa-gb"
         supersequence_parser = SeqIO.parse(str(supersequence_file), "fasta")
@@ -91,8 +96,9 @@ class TestModule(unittest.TestCase):
         orthology_matrix_f = Path("data/OGmatrix.csv")
         cores = 4
         out_dir = Path("data")
-        resources_dir = Path("../../resources")
-        phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, resources_dir)
+        no_keep_fasta = False
+        tree_model = None
+        phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, no_keep_fasta, tree_model, debug=True)
         phylogenomic.compute_tree()
         phylogenomic.move_iqtree_files()
         directory_to_check = Path("data/Phylogenomic_tree/iqtree")
@@ -102,12 +108,12 @@ class TestModule(unittest.TestCase):
         self.assertIn("supersequence_IQTree2.nwk", filenames)
 
     def test_run_phylogenomic(self):
-        pass
         fasta_dir = Path("data/Protein_fasta_files")
         orthology_matrix_f = Path("data/OGmatrix.csv")
         cores = 4
         out_dir = Path("data")
-        resources_dir = Path("../../resources")
-        phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, resources_dir, debug=True)
+        no_keep_fasta = False
+        tree_model = None
+        phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, no_keep_fasta, tree_model, debug=True)
         return_code = phylogenomic.run_phylogenomic()
         self.assertEqual(return_code, 0)

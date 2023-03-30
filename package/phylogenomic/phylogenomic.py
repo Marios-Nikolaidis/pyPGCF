@@ -3,7 +3,9 @@ from numpy import nan as np_nan
 from pathlib import Path
 from typing import List, Union
 import os
+from datetime import datetime
 #import re
+from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 from Bio import SeqIO, AlignIO
 from Bio.Seq import Seq
@@ -59,9 +61,9 @@ class Phylogenomic():
                 genes = list(self.orthology_matrix[organism].values)
             for x, gene in enumerate(genes):
                 info = protein_records[gene]
-                info.description = ""
+                info.description = organism
                 info.name = ""
-                info.id = info.id + "-" + organism # TODO: Maybe just rename everything based on organism?
+                info.id = info.id
                 fout = self.og_fasta_dir / ("OG" + str(x) + ".fa")
                 fout_handle = open(fout, "a")
                 SeqIO.write(info, fout_handle, "fasta")
@@ -84,7 +86,7 @@ class Phylogenomic():
                         ])
             commands.append(cmd)
         with ProcessPoolExecutor(self.cores) as executor:
-            _ = executor.map(_execute_cmd,commands)
+            list(tqdm(executor.map(_execute_cmd,commands), total=len(commands), desc="Aligning OG fasta files", ascii=True, leave=True))
     
     def create_supersequence_file(self):
         """
@@ -113,18 +115,19 @@ class Phylogenomic():
         superseq_file = self.out_dir / "supersequence.fa"
         init_supersequence_file(self.ref, self.genomes, superseq_file)
         superseq_records = SeqIO.to_dict(AlignIO.read(str(superseq_file), "fasta"))
-
         aln_files = self.og_fasta_dir_aln.glob("*")
-        # aln_file = [str(f) for f in aln_files]
-        # aln_files = _sortAlphanum(aln_files) 
-        # To know that this is the correct order of genes
-        for aln_file in aln_files:
-            aln_records = SeqIO.to_dict(AlignIO.read(str(aln_file), "fasta"))
-            aln_records = {records.split("-")[1] : aln_records[records] for records in aln_records} # Rename the keys, need to use the org name
+
+        for aln_file in tqdm(aln_files, desc="Creating supersequence", ascii=True, leave=True):
+            # aln_records = SeqIO.to_dict(AlignIO.read(str(aln_file), "fasta"))
+            # aln_records = {records.description : aln_records[records] for records in aln_records} # Rename the keys, need to use the org name
+            parser = SeqIO.parse(str(aln_file), "fasta")
+            aln_records = {record.description.replace(record.name + " ", "") : record 
+                           for record in parser
+                           } # Rename the keys, need to use the org name
             aln_organisms = list(aln_records.keys())
             for organism in superseq_records:
                 if organism in aln_organisms:
-                    superseq_records[organism].seq = superseq_records[organism].seq + aln_records[organism].seq
+                    superseq_records[organism].seq += aln_records[organism].seq
         superseq_seqrecords = list(superseq_records.values())
         superseq_file_handle_out = open(superseq_file, "w")
         SeqIO.write(superseq_seqrecords, superseq_file_handle_out, "fasta")
@@ -147,6 +150,7 @@ class Phylogenomic():
         supersequence_file = self.out_dir / "supersequence.fa-gb"
         cmd = " ".join(["iqtree2",
                         f"-m {self.tree_model}",
+                        "--quiet",
                         "-merit AIC",
                         "-alrt 1000",
                         f"-T {str(self.cores)}",
@@ -172,10 +176,14 @@ class Phylogenomic():
 
     def run_phylogenomic(self) -> Union[None, int]:
         self.setup_directories()
+        print(f"Creating fasta files of each orthologous group {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
         self.create_og_fasta()
+        print(f"Aligning fasta files of each orthologous group {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
         self.align_og_fasta()
+        print(f"Creating supersequence file {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
         self.create_supersequence_file()
         self.filter_supersequence_aln()
+        print(f"Computing phylogenomic tree {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
         self.compute_tree()
         self.move_iqtree_files()
         if self.no_keep_fasta:
