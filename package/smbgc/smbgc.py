@@ -60,8 +60,9 @@ class smBGCLocalRunner():
         os.system(cmd)
 
     def analyze_genomes(self):
-        genome_files = self.genome_fasta_dir.glob("*")
-        for genome_file in tqdm(genome_files, desc="Running antiSMASH"):
+        genome_files = list(self.genome_fasta_dir.glob("*"))
+        for genome_file in tqdm(genome_files, desc="Running antiSMASH", ascii=True, leave=True):
+            print(genome_file)
             genome_out_dir = self.antismash_raw_results_dir / genome_file.stem
             genome_out_dir.mkdir(exist_ok=True, parents=True)
             cmd = self.create_antismash_cmd(genome_file, genome_out_dir)
@@ -126,13 +127,13 @@ class smBGCParser():
                     description = known_cluster_results[idx]["ranking"][0][0]["description"]
                 tmp_data = {
                         "Genome": genome,
+                        "Source":seq_type,
                         "Region": region_id,
                         "Region_s": region_s,
                         "Region_end": region_e,
                         "Products": region_p,
-                        "Desc": description,
-                        "Perc identity": perc_identity,
-                        "Source":seq_type
+                        "Most similar known cluster": description,
+                        "Perc. similarity": perc_identity,
                 }
                 data.append(tmp_data)
         return pd.DataFrame(data)
@@ -145,7 +146,7 @@ class smBGCParser():
     def gather_results(self):
         total_data = []
         with ProcessPoolExecutor(self.parsing_cores) as executor:
-            for dataframe in executor.map(self.parse_strain_results, self.antismash_subdirs):
+            for dataframe in tqdm(executor.map(self.parse_strain_results, self.antismash_subdirs), total=len(self.antismash_subdirs), desc="Parsing antiSMASH results", ascii=True, leave=True):
                 total_data.append(dataframe)
         self.final_df = pd.concat(total_data)
         self.write_antismash_results()

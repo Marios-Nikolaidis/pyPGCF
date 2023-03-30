@@ -35,10 +35,13 @@ class Orthologues_identifier():
         
 
     def _get_blast_binaries(self) -> None:
-        resources_dir = Path('../../resources/')
-        makeblastdb_bin = Path(__file__).parent/resources_dir/"makeblastdb" #/ .replace(os.path.basename(__file__) + "/", "")
-        blastn_bin = Path(__file__).parent/resources_dir/"blastn" #/ .replace(os.path.basename(__file__) + "/", "")
-        diamond_bin = Path(__file__).parent/resources_dir/"diamond" #/ .replace(os.path.basename(__file__) + "/", "")
+        #resources_dir = Path('../../resources/')
+        #makeblastdb_bin = Path(__file__).parent/resources_dir/"makeblastdb" #/ .replace(os.path.basename(__file__) + "/", "")
+        #blastn_bin = Path(__file__).parent/resources_dir/"blastn" #/ .replace(os.path.basename(__file__) + "/", "")
+        #diamond_bin = Path(__file__).parent/resources_dir/"diamond" #/ .replace(os.path.basename(__file__) + "/", "")
+        diamond_bin = "diamond"
+        blastn_bin = "blastn"
+        makeblastdb_bin = "makeblastdb"
 
         self.blast_bin = diamond_bin
         if self.input_type == "nucl":
@@ -54,7 +57,7 @@ class Orthologues_identifier():
         Create blast database for a fasta file
         """
         database_f = self.out_dir / ref / "Blast_DB" / fasta_file.name
-        cmd = f"{self.blast_bin} makedb --in {fasta_file} --db {database_f} --threads {self.blast_cores}" # DIAMOND
+        cmd = f"{self.blast_bin} makedb --in {fasta_file} --quiet --db {database_f} --threads {self.blast_cores}" # DIAMOND
         if self.input_type == "nucl":
             cmd = f"{self.blast_db_bin} -in {fasta_file} -dbtype nucl -out {database_f}"
         database_f = database_f.with_suffix(".faa.dmnd")
@@ -71,7 +74,7 @@ class Orthologues_identifier():
             added_sensitivity = " --more-sensitive"
         if self.dmnd_sensitivity == "ultra_sensitive":
             added_sensitivity = " --ultra-sensitive"
-        cmd = f"{self.blast_bin} blastp --query {fasta_file} --db {database_f} --outfmt 6 --out {out_file} --evalue {self.blast_evalue} --threads {self.blast_cores}"
+        cmd = f"{self.blast_bin} blastp --query {fasta_file} --quiet --db {database_f} --outfmt 6 --out {out_file} --evalue {self.blast_evalue} --threads {self.blast_cores}"
         cmd += added_sensitivity
         if self.input_type == "nucl":
             cmd = f"{self.blast_bin} -query {fasta_file} -db {database_f} -outfmt 6 -out {out_file} -evalue {self.blast_evalue} -num_threads {self.blast_cores}"
@@ -99,7 +102,7 @@ class Orthologues_identifier():
 
         _, ref_db = self._create_blast_db(ref, ref_fasta)
 
-        for fasta_file in tqdm(self.fasta_files, ascii=True, leave=False, desc="Performing reciprocal BLAST"):
+        for fasta_file in tqdm(self.fasta_files, ascii=True, leave=True, desc="Performing reciprocal BLAST"):
             if ref == fasta_file.stem:
                 continue
             # Create the blast database for the fasta file
@@ -163,10 +166,8 @@ class Orthologues_identifier():
     
         logging.debug("Parsing BLAST results")
         fasta_files = self.fasta_files
-        print("Parsing blast output")
-    
-        for fasta_file in tqdm(fasta_files, ascii=True):
-            if fasta_file.name == ref:
+        for fasta_file in tqdm(fasta_files, ascii=True, leave=True, desc="Parsing BLAST output"):
+            if ref in fasta_file.stem:
                 continue
             ref_vs_query_file = self.out_dir / ref / "Blast_results" / (fasta_file.name + "_vs_reference.txt")
             query_vs_ref_file = self.out_dir / ref / "Blast_results" / (fasta_file.name + "_vs_reference_reverse.txt")
@@ -240,6 +241,7 @@ class Orthologues_identifier():
 
     def calculate_orthologues(self):
         refs = []
+        self.setup()
         if self.ref != None:
             ref = self.ref
             refs.append(ref)
@@ -248,8 +250,13 @@ class Orthologues_identifier():
             for ref in list_in:
                 refs.append(ref)
             list_in.close()
-        for ref in refs:
+        for idx, ref in enumerate(refs):
+            if idx > 0:
+                print("-" * 150)
+            print(f"Reference strain: {ref}")
             ref_fasta = self.reciprocal_blast(ref)
             self.parse_blast_results(ref)
+            print("Creating orthology matrix")
             self.create_orthology_matrix(ref, ref_fasta)
+            print("Done")
 

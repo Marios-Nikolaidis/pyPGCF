@@ -1,6 +1,7 @@
 """Add functional annotation to the proteins in the core genes excels"""
 import pandas as pd
 from scipy.stats import hypergeom
+from datetime import datetime
 from Bio import SeqIO
 from pathlib import Path
 from typing import Tuple, List
@@ -19,9 +20,11 @@ class eggNOGInstaller():
         os.system(cmd)
     
     def download_databases(self):
-        cmd = f"download_eggnog_data.py -y --data_dir {self.resources_dir}"
+        cmd = f"download_eggnog_data.py -y"
+        #cmd = f"download_eggnog_data.py -y --data_dir {self.resources_dir}"
         if self.debug:
-            cmd = f"download_eggnog_data.py -s -y --data_dir {self.resources_dir}"
+            #cmd = f"download_eggnog_data.py -s -y --data_dir {self.resources_dir}"
+            cmd = f"download_eggnog_data.py -s -y"
         os.system(cmd)
 
     def install(self):
@@ -29,8 +32,8 @@ class eggNOGInstaller():
         self.download_databases()
 
 class eggNOGRunner():
-    def __init__(self,resources_dir: Path, fasta_dir: Path, core_protein_table_f: Path, out_dir: Path, cores: int, pident: float, qcov: float, scov: float, debug: bool):
-        self.resources_dir = resources_dir
+    def __init__(self, fasta_dir: Path, core_protein_table_f: Path, out_dir: Path, cores: int, pident: float, qcov: float, scov: float, debug: bool=False):
+        #self.resources_dir = resources_dir
         self.fasta_dir = fasta_dir
         self.core_protein_table = pd.read_excel(core_protein_table_f, index_col=0)
         self.out_dir = out_dir / "eggNOG"
@@ -58,13 +61,14 @@ class eggNOGRunner():
     def create_eggnog_cmd(self):
         eggnog_cmd = " ".join([
             "emapper.py",
-            f"--data_dir {self.resources_dir}",
+            #f"--data_dir {self.resources_dir}",
             f"--cpu {self.cores}",
             f"--pident {self.pident}",
             f"--query_cov {self.qcov}",
             f"--subject_cov {self.scov}",
             f"-o {self.eggnog_raw_results_file}",
-            f"-i {self.fasta_file}"
+            f"-i {self.fasta_file}",
+            " > /dev/null "
             ])
         self.eggnog_cmd = eggnog_cmd
 
@@ -79,6 +83,7 @@ class eggNOGRunner():
         file_to_rename.rename(self.eggnog_raw_results_file)
 
     def execute_eggnog_mapper(self):
+        print(f"Executing eggNOG-mapper: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
         self.get_reference_fasta_file()
         self.create_eggnog_cmd()
         self.setup_directories()
@@ -126,7 +131,7 @@ class eggNOGParser():
         }
 
     def get_reference_fasta_file(self):
-        ref = self.core_protein_table.index.name
+        ref = str(self.core_protein_table.index.name)
         found = False
         for fasta_file in self.fasta_dir.glob("*"):
             if ref not in fasta_file.name:
@@ -196,11 +201,6 @@ class eggNOGParser():
 
         self.cog_categories_data = cog_categories
 
-    def gather_eggnog_results(self):
-        self.parse_eggnog_results()
-        self.get_protein_subsets()
-        self.calculate_cog_categories_for_proteins()
-    
     def perform_hypergeom_test(self, population_size: int, population_successes: int, sample_size: int, sample_successes: int) -> Tuple:
         expected = (sample_size * population_successes) / population_size
         # p-value
@@ -235,8 +235,6 @@ class eggNOGParser():
         over_rep_colour = "background-color:green"
         under_rep_colour = "background-color:red"
         return_value = ["" for _ in row.index]
-        print(row)
-        print("-" * 10)
         pvalue = row.loc["p-value"]
         fc = row.loc["Fold_change"]
         if type(pvalue) == str:
@@ -255,3 +253,13 @@ class eggNOGParser():
             df = df.style.apply(self.highlight_pvalue_on_output, axis=1)
             df.to_excel(excel_writer, sheet_name=protein_set)
         excel_writer.close()
+
+    def gather_eggnog_results(self):
+        print(f"Parsing results: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
+        self.parse_eggnog_results()
+        self.get_protein_subsets()
+        self.calculate_cog_categories_for_proteins()
+        self.compare_sets_with_hypergeometric_test()
+        print(f"Writing results: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
+        self.write_hypergeometric_dfs()
+    

@@ -4,11 +4,11 @@ from typing import Union, Tuple
 from pathlib import Path
 
 class Core_identifier():
-    def __init__(self, orthology_fin: Path, species_file: Union[None,Path], core_perc: float, outdir: Path):
+    def __init__(self, orthology_fin: Path, out_dir: Path, species_file: Union[None,Path], core_perc: float):
         """
         """
         self.core_perc = core_perc
-        self.outdir = outdir / "Core_and_fingerprints"
+        self.out_dir = out_dir / "Core_and_fingerprints"
         self.orthology_df = pd.read_csv(orthology_fin, sep="\t", index_col=0)
         self.orthology_df = self._turn_orthology_df_to_binary()
         self.ref = self.orthology_df.index.name
@@ -23,7 +23,7 @@ class Core_identifier():
         return self.orthology_df.applymap(lambda x: 0 if x == "X" else 1)
 
     def setup_directories(self):
-        self.outdir.mkdir(exist_ok=True, parents=True)
+        self.out_dir.mkdir(exist_ok=True, parents=True)
 
 
     def split_genomes_into_groups(self):
@@ -32,8 +32,7 @@ class Core_identifier():
         If genus is True, then the complete table (taxon) is used
         """
         if self.genus:
-            group_orgs = self.orthology_df.index.tolist()
-            group_orgs.remove(self.ref)
+            group_orgs = self.orthology_df.columns.tolist()
             self.group_orgs = group_orgs
             self.non_group_orgs = []
             return
@@ -62,9 +61,16 @@ class Core_identifier():
         """"""
         core_proteins = df[df["Group orthologues %"] >= self.core_perc].index.tolist()
         fingerprints = df[(df["Group orthologues %"] == 100) & (df["Non group orthologues %"] == 0)].index.tolist()
-        data = {protein: {f"Core_{self.core_perc}%": 1, "Is fingerprint": 0} for protein in core_proteins}
-        for protein in fingerprints:
-            data[protein]["Is fingerprint"] = 1
+        data = {}
+        core_perc_col = f"Core_{self.core_perc}%"
+        for protein in df.index.tolist():
+            data[protein] = {core_perc_col: 0,"Is fingerprint": 0}
+            if protein in fingerprints:
+                data[protein]["Is fingerprint"] = 1
+                data[protein][core_perc_col] = 1
+                continue
+            if protein in core_proteins:
+                data[protein][core_perc_col] = 1
         return data
 
     def calculate_core(self) -> Tuple["DataFrame", Path]:
@@ -77,9 +83,10 @@ class Core_identifier():
         core_protein_data_df = pd.DataFrame.from_dict(core_protein_data, orient="index")
         core_protein_data_df.index.name = self.ref
         if self.genus:
-            fout = self.outdir / f"{self.ref}_core.xlsx"
+            fout = self.out_dir / f"{self.ref}_core.xlsx"
+            core_protein_data_df = core_protein_data_df.drop("Is fingerprint", axis=1)
         else:
-            fout = self.outdir / f"{self.ref}_species_core.xlsx"
+            fout = self.out_dir / f"{self.ref}_species_core.xlsx"
         core_protein_data_df.to_excel(fout)
         return core_protein_data_df, fout
 
