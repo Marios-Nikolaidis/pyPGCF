@@ -31,9 +31,9 @@ class eggNOGRunner():
         #self.resources_dir = resources_dir
         self.fasta_dir = fasta_dir
         self.core_protein_table = pd.read_excel(core_protein_table_f, index_col=0)
-        self.ref = self.core_protein_table.index.name
-        self.out_dir = out_dir / "eggNOG" / str(self.ref)
-        self.eggnog_raw_results_file = self.out_dir/"eggNOG_results.csv"
+        self.ref = str(self.core_protein_table.index.name)
+        self.out_dir = out_dir / "eggNOG"
+        self.eggnog_raw_results_file = self.out_dir / (self.ref + "_eggNOG_results.csv")
         self.cores = cores
         self.pident = pident
         self.qcov =  qcov
@@ -78,7 +78,8 @@ class eggNOGRunner():
         file_to_rename.rename(self.eggnog_raw_results_file)
 
     def execute_eggnog_mapper(self):
-        print(f"Executing eggNOG-mapper: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
+        print(f"Executing eggNOG-mapper: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}, reference strain: {self.ref}")
+        self.setup_directories()
         self.get_reference_fasta_file()
         self.create_eggnog_cmd()
         self.setup_directories()
@@ -92,7 +93,7 @@ class eggNOGRunner():
 class eggNOGParser():
     def __init__(self, fasta_dir: Path, core_protein_table_file_list: List[Path], out_dir: Path):
         self.fasta_dir = fasta_dir
-        self.core_protein_table = pd.read_excel(core_protein_table_f, index_col=0)
+        self.core_protein_table_file_list = core_protein_table_file_list
         self.out_dir = out_dir / "eggNOG"
         self.eggnog_headers = ["query", "seed_ortholog", "evalue", "score", "eggNOG_OGs", "max_annot_lvl", 
             "COG_category", "Description", "Preferred_name", "GOs", "EC", "KEGG_ko",
@@ -126,15 +127,15 @@ class eggNOGParser():
         }
 
     def get_reference_fasta_file(self):
-        ref = str(self.core_protein_table.index.name)
+        self.ref = str(self.core_protein_table.index.name)
         found = False
         for fasta_file in self.fasta_dir.glob("*"):
-            if ref not in fasta_file.name:
+            if self.ref not in fasta_file.name:
                 continue
             found = True
             self.fasta_file = fasta_file
         if not found:
-            raise Exception(f"{ref} fasta file not found in {self.fasta_dir.name}")
+            raise Exception(f"{self.ref} fasta file not found in {self.fasta_dir.name}")
 
     def load_all_reference_proteins(self) -> dict:
         record = SeqIO.parse(str(self.fasta_file), "fasta")
@@ -151,12 +152,12 @@ class eggNOGParser():
         )
         return eggnog_results_df["COG_category"].to_dict()
 
-    def parse_eggnog_results(self):
+    def parse_eggnog_raw_results(self):
         # Load reference proteins
         self.get_reference_fasta_file()
         ref_data = self.load_all_reference_proteins()
         # Load eggnog annotation
-        eggnog_results_f = self.out_dir / "eggNOG_results.csv"
+        eggnog_results_f = self.out_dir / (self.ref + "_eggNOG_results.csv")
         eggnog_results_df = pd.read_csv(eggnog_results_f, sep="\t", index_col=0, comment="#", names=self.eggnog_headers)
         eggnog_annotation = self.get_assigned_cog_categories(eggnog_results_df)
         # Update reference data 
@@ -210,35 +211,44 @@ class eggNOGParser():
         fold_change = ratio_sample / ratio_population
         return pval, fold_change
 
-    def compare_sets_with_hypergeometric_test(self):
+    def compare_sets_with_hypergeometric_test(self) -> dict:
         background_set = "proteome"
         population_size = len(self.proteome_cog.keys())# Number of proteins in proteome
         dfs = []
         for protein_set, protein_list in self.protein_subsets.items():
-            data = {}
+            data = {self.ref: {}}
             sample_size = len(protein_list)
             for category in self.cog_categories_data:
                 population_successes = self.cog_categories_data[category][background_set]
                 sample_successes = self.cog_categories_data[category][protein_set]
                 pvalue, fold_change = self.perform_hypergeom_test(population_size, population_successes, sample_size, sample_successes)
-                data[category] = {"Annotation": self.category_annotation.get(category, "X"), "p-value": pvalue, "Fold_change": fold_change}
+                data[self.ref][f"{category}_pvalue"] = pvalue
+                data[self.ref][f"{category}_fold_change"] =  fold_change
+                # data[self.ref][category] = {"Annotation": self.category_annotation.get(category, "X"), "p-value": pvalue, "Fold_change": fold_change}
             df = pd.DataFrame.from_dict(data, orient="index")
             dfs.append(df)
-        self.hypergeometric_dfs = dfs
+        return {"core": dfs[0], "fingerprint":dfs[1]}
     
     def highlight_pvalue_on_output(self, row: pd.Series) -> List:
         over_rep_colour = "background-color:green"
         under_rep_colour = "background-color:red"
         return_value = ["" for _ in row.index]
-        pvalue = row.loc["p-value"]
-        fc = row.loc["Fold_change"]
-        if type(pvalue) == str:
-            return return_value
-        if pvalue <= 0.05:
-            if fc > 1:
-                return_value[0] = over_rep_colour
-            if fc < 1:
-                return_value[0] = under_rep_colour
+        pvalue_idx = [idx for idx in row.index if "pvalue" in idx]
+        fold_change_idx = [idx for idx in row.index if "fold_change" in idx]
+        for pvalue_col, fold_change_col in zip(pvalue_idx, fold_change_idx):
+            pvalue = row[pvalue_col]
+            fold_change = row[fold_change_col]
+            pvalue_col_idx = row.index.get_loc(pvalue_col)
+            fold_change_col_idx = row.index.get_loc(fold_change_col)
+            if type(pvalue) == str:
+                return return_value
+            if pvalue <= 0.05:
+                if fold_change > 1:
+                    return_value[pvalue_col_idx] = over_rep_colour
+                    return_value[fold_change_col_idx] = over_rep_colour
+                if fold_change < 1:
+                    return_value[pvalue_col_idx] = under_rep_colour
+                    return_value[fold_change_col_idx] = under_rep_colour
         return return_value
 
     def write_hypergeometric_dfs(self):
@@ -251,10 +261,20 @@ class eggNOGParser():
 
     def gather_eggnog_results(self):
         print(f"Parsing results: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
-        self.parse_eggnog_results()
-        self.get_protein_subsets()
-        self.calculate_cog_categories_for_proteins()
-        self.compare_sets_with_hypergeometric_test()
+        total_data = {"core": [], "fingerprint": []}
+        for core_protein_table_f in self.core_protein_table_file_list:
+            self.core_protein_table = pd.read_excel(core_protein_table_f, index_col=0)
+            self.ref = str(self.core_protein_table.index.name)
+            self.parse_eggnog_raw_results()
+            self.get_protein_subsets()
+            self.calculate_cog_categories_for_proteins()
+            tmp_data = self.compare_sets_with_hypergeometric_test()
+            total_data["core"].append(tmp_data["core"])
+            total_data["fingerprint"].append(tmp_data["fingerprint"])
+        self.hypergeometric_dfs = [
+            pd.concat(total_data["core"]),
+            pd.concat(total_data["fingerprint"])
+        ]
         print(f"Writing results: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
         self.write_hypergeometric_dfs()
     

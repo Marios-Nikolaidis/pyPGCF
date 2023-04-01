@@ -131,14 +131,25 @@ def main():
         orthologues_identifier.calculate_orthologues()
     
     if args["module"] == "core":
-        og_matrix_in = Path(args["in"])
         out_dir = Path(args["o"])
         species_file = args["species"]
         if species_file != None:
             species_file = Path(species_file)
-        core_perc = args["core_perc"]
-        core_identifier = Core_identifier(og_matrix_in, ref_list, out_dir, species_file, core_perc)
-        core_identifier.calculate_core()
+        og_matrix_in = args["in"]
+        og_matrix_list_f = args["ref_list"]
+        if og_matrix_list_f == None:
+            og_matrix_list = [og_matrix_in]
+        else:
+            og_matrix_list = []
+            with open(og_matrix_list_f, "r") as rf:
+                for line in rf:
+                    line = line.rstrip()
+                    og_matrix_list.append(line)
+        og_matrix_list = [Path(og_matrix_in) for og_matrix_in in og_matrix_list]
+        for og_matrix_in in og_matrix_list:
+            core_perc = args["core_perc"]
+            core_identifier = Core_identifier(og_matrix_in, out_dir, species_file, core_perc)
+            core_identifier.calculate_core()
     
     if args["module"] == "phylogenomic":
         fasta_dir = Path(args["fasta_dir"])
@@ -153,9 +164,9 @@ def main():
     if args["module"] == "eggnog":
         fasta_dir = Path(args["fasta_dir"])
         out_dir = Path(args["o"])
-        precomputed_results = args["eggnog_results"]
-        if precomputed_results != None:
-            precomputed_results = Path(precomputed_results)
+        # precomputed_results = args["eggnog_results"]
+        # if precomputed_results != None:
+        #     precomputed_results = Path(precomputed_results)
         cores = args["cores"]
         pident = args["pident"]
         qcov = args["qcov"] # Query coverage
@@ -166,17 +177,21 @@ def main():
             installer.download_databases()
             return 
         core_proteins_file = args["in"]
-        core_proteins_file_list = args["ref_list"]
+        core_protein_files_reflist = args["ref_list"]
         if core_proteins_file != None:
-            core_proteins_file_list = [Path(core_proteins_file)]
+            core_proteins_file_list = [core_proteins_file]
         else:
-            core_proteins_file_list = [Path(core_proteins_file) for core_proteins_file in core_proteins_file_list]
+            core_proteins_file_list = []
+            with open(core_protein_files_reflist, "r") as rf:
+                for line in rf:
+                    core_proteins_file_list.append(line.rstrip())
+        core_proteins_file_list = [Path(core_proteins_file) for core_proteins_file in core_proteins_file_list]
         for core_proteins_file in core_proteins_file_list:
             core_proteins_file = Path(core_proteins_file)
             runner = eggNOGRunner(fasta_dir, core_proteins_file, out_dir, cores, pident, qcov, scov)
             runner.execute_eggnog_mapper()
-        # parser = eggNOGParser(fasta_dir, core_proteins_file_list, out_dir)
-        # parser.gather_eggnog_results()
+        parser = eggNOGParser(fasta_dir, core_proteins_file_list, out_dir)
+        parser.gather_eggnog_results()
     
     if args["module"] == "smbgc":
         install = args["install"]
