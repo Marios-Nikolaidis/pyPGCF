@@ -71,6 +71,7 @@ class SpeciesDemarcator():
         df["FastANI_species"] = df["ClustNum"].apply(lambda x: "C" + str(x))
         df = df.drop("ClustNum", axis=1)
         df.index = [idx.split("/")[-1] for idx in df.index]
+        df.index = [".".join(idx.split(".")[:-1]) for idx in df.index]
         fastani_from_mcl.unlink()
         fout = outdir / "FastANI_species_clusters.xlsx"
         df.to_excel(fout)
