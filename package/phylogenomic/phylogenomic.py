@@ -1,7 +1,7 @@
 import pandas as pd
 from numpy import nan as np_nan
 from pathlib import Path
-from typing import List, Union
+from typing import Generator, List, Union
 import os
 from datetime import datetime
 #import re
@@ -50,7 +50,7 @@ class Phylogenomic():
         self.orthology_matrix = self.orthology_matrix.dropna()
         organisms: List = [self.orthology_matrix.index.name]
         organisms.extend(self.orthology_matrix.columns.tolist())
-        fasta_files = self.fasta_dir.glob("*")
+        fasta_files: Generator = self.fasta_dir.glob("*")
         fasta_files_dict = {f.stem:f for f in fasta_files}
         for org_count, organism in enumerate(organisms):
             fasta_file = fasta_files_dict[organism]
@@ -68,7 +68,6 @@ class Phylogenomic():
                 fout_handle = open(fout, "a")
                 SeqIO.write(info, fout_handle, "fasta")
                 fout_handle.close()
-    # Write presequity for dash in gene name. Need to find a way to fix this
 
     def align_og_fasta(self):
         """
@@ -88,9 +87,9 @@ class Phylogenomic():
         with ProcessPoolExecutor(self.cores) as executor:
             list(tqdm(executor.map(_execute_cmd,commands), total=len(commands), desc="Aligning OG fasta files", ascii=True, leave=True))
     
-    def create_supersequence_file(self):
+    def create_superalignment_file(self):
         """
-        Join the aligned COGs into a supersequence
+        Join the aligned orthologous groups into a superalignment
         :return: None
         """
         # def _sortAlphanum(iteratable):
@@ -99,9 +98,9 @@ class Phylogenomic():
         #     sorting_key = lambda key: [ int_convert(c) for c in re.split('([0-9]+)', key) ] 
         #     return sorted(iteratable, key = sorting_key)
         
-        def init_supersequence_file(ref, genomes, superseq_file):
+        def init_superalignment_file(ref, genomes, superseq_file):
             """
-            Initialise the supersequence file with empty sequences for each organism
+            Initialise the superalignment file with empty sequences for each organism
             """
             seqrecord_list = []
             organisms = [ref]
@@ -112,12 +111,12 @@ class Phylogenomic():
             superseq_file_handle_out = open(superseq_file, "w")
             SeqIO.write(seqrecord_list,superseq_file_handle_out, "fasta")
     
-        superseq_file = self.out_dir / "supersequence.fa"
-        init_supersequence_file(self.ref, self.genomes, superseq_file)
+        superseq_file = self.out_dir / "superalignment.fa"
+        init_superalignment_file(self.ref, self.genomes, superseq_file)
         superseq_records = SeqIO.to_dict(AlignIO.read(str(superseq_file), "fasta"))
         aln_files = self.og_fasta_dir_aln.glob("*")
 
-        for aln_file in tqdm(aln_files, desc="Creating supersequence", ascii=True, leave=True):
+        for aln_file in tqdm(aln_files, desc="Creating superalignment", ascii=True, leave=True):
             # aln_records = SeqIO.to_dict(AlignIO.read(str(aln_file), "fasta"))
             # aln_records = {records.description : aln_records[records] for records in aln_records} # Rename the keys, need to use the org name
             parser = SeqIO.parse(str(aln_file), "fasta")
@@ -133,37 +132,37 @@ class Phylogenomic():
         SeqIO.write(superseq_seqrecords, superseq_file_handle_out, "fasta")
     
     
-    def filter_supersequence_aln(self):
-        """ Filter the supersequence alignment using Gblocks with default parameters """
+    def filter_superalignment(self):
+        """ Filter the superalignment using Gblocks with default parameters """
         cmd = " ".join(["Gblocks",
-                        str(self.out_dir / "supersequence.fa"),
+                        str(self.out_dir / "superalignment.fa"),
                         "-s=y -e=-gb -p=y" 
                         ])
         _execute_cmd(cmd)
-        htm_file = self.out_dir / "supersequence.fa-gb.htm"
+        htm_file = self.out_dir / "superalignment.fa-gb.htm"
         htm_file.unlink()
     
     def compute_tree(self):
         """
         Compute the phylogenomic tree using IQtree2
         """
-        supersequence_file = self.out_dir / "supersequence.fa-gb"
+        superalignment_file = self.out_dir / "superalignment.fa-gb"
         cmd = " ".join(["iqtree2",
                         f"-m {self.tree_model}",
                         "--quiet",
                         "-merit AIC",
                         "-alrt 1000",
                         f"-T {str(self.cores)}",
-                        f"-s {supersequence_file}"
+                        f"-s {superalignment_file}"
                         ])
         _execute_cmd(cmd)
 
     def move_iqtree_files(self):
-        files = list(self.out_dir.glob("supersequence.fa-gb.*"))
+        files = list(self.out_dir.glob("superalignment.fa-gb.*"))
         for f in files:
             renamed = self.iqtree_results_dir / f.name
             if f.suffix == ".treefile":
-                renamed = self.iqtree_results_dir / "supersequence_IQTree2.nwk"
+                renamed = self.iqtree_results_dir / "superalignment_IQTree2.nwk"
             f.rename(renamed)
 
     def clean_fasta_files(self):
@@ -180,9 +179,9 @@ class Phylogenomic():
         self.create_og_fasta()
         print(f"Aligning fasta files of each orthologous group {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
         self.align_og_fasta()
-        print(f"Creating supersequence file {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
-        self.create_supersequence_file()
-        self.filter_supersequence_aln()
+        print(f"Creating superalignment file {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
+        self.create_superalignment_file()
+        self.filter_superalignment()
         print(f"Computing phylogenomic tree {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
         self.compute_tree()
         self.move_iqtree_files()

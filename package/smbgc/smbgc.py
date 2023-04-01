@@ -20,10 +20,10 @@ class smBGCInstaller():
                 #"conda config --add channels defaults",
                 #"conda config --add channels bioconda",
                 #"conda config --add channels conda-forge",
-            #"conda config --set channel_priority strict",
             #"conda install -y -c bioconda antismash"
-            "conda install -y antismash"
+            "mamba install -y -c bioconda antismash",
         ]
+        # TODO: Should check if mamba is installed and use that instead of conda
         for cmd in cmds:
             os.system(cmd)
 
@@ -62,7 +62,6 @@ class smBGCLocalRunner():
     def analyze_genomes(self):
         genome_files = list(self.genome_fasta_dir.glob("*"))
         for genome_file in tqdm(genome_files, desc="Running antiSMASH", ascii=True, leave=True):
-            #print(genome_file)
             genome_out_dir = self.antismash_raw_results_dir / genome_file.stem
             genome_out_dir.mkdir(exist_ok=True, parents=True)
             cmd = self.create_antismash_cmd(genome_file, genome_out_dir)
@@ -97,15 +96,12 @@ class smBGCParser():
         json_f  = strain_subdir / (genome + ".json")
         json_str = self.load_json(str(json_f))
         data = []
-        for seq_idx, seq_obj in enumerate(json_str["records"]):
+        for seq_obj in json_str["records"]:
             identified_smbgcs = seq_obj["areas"]
             has_identified_smbgcs = self.has_identified_smbgcs(identified_smbgcs)
             if not has_identified_smbgcs:
                 continue
             known_cluster_results = self.get_known_cluster_results(seq_obj)
-            seq_type = "chromosome"
-            if seq_idx != 0:
-                seq_type = "plasmid"
             region_id = seq_obj["id"]
             for idx, area in enumerate(identified_smbgcs):
                 # smbgcs
@@ -127,13 +123,12 @@ class smBGCParser():
                     description = known_cluster_results[idx]["ranking"][0][0]["description"]
                 tmp_data = {
                         "Genome": genome,
-                        "Source":seq_type,
                         "Region": region_id,
-                        "Region_s": region_s,
+                        "Region_start": region_s,
                         "Region_end": region_e,
                         "Products": region_p,
-                        "Most similar known cluster": description,
-                        "Perc. similarity": perc_identity,
+                        "Most_similar_known_cluster": description,
+                        "Perc._similarity": perc_identity,
                 }
                 data.append(tmp_data)
         return pd.DataFrame(data)
