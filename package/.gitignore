@@ -14,10 +14,10 @@ phylogenomic/data/*
 phylogenomic/__pycache__
 phylogenomic/tests/__pycache__
 
-eggNOG/data/*
-eggNOG/__pycache__
-eggNOG/__pycache__/*
-eggNOG/tests/__pycache__
+eggnog/data/*
+eggnog/__pycache__
+eggnog/__pycache__/*
+eggnog/tests/__pycache__
 
 
 smbgc/data/*

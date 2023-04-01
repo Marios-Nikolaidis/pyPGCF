@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """
 Author: Marios Nikolaidis
-Git: marios-nikolaidis
+Git: https://github.com/Marios-Nikolaidis
 email: marionik23@gmail.com
 """
+######################
+# TODO
+# 1. Add nucleotide input for eggnog
+# 2. Add cleaning of BLAST database after completion of orthologues detection
+######################
 
 import argparse
 import config
@@ -12,7 +17,7 @@ from species_demarcation.species_demarcation import SpeciesDemarcator
 from orthologues.orthologues import Orthologues_identifier
 from core.core import Core_identifier
 from phylogenomic.phylogenomic import Phylogenomic
-from eggNOG.eggNOG import eggNOGRunner, eggNOGParser
+from eggnog.eggnog import eggNOGRunner, eggNOGParser
 from smbgc.smbgc import smBGCLocalRunner, smBGCParser, smBGCInstaller
 
 def main():
