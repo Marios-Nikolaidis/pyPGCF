@@ -86,7 +86,8 @@ class Orthologues_identifier():
         if self.ref_list != None:
             list_in = open(self.ref_list, "r")
             for ref in list_in:
-                self._set_directories(ref.rstrip())
+                ref = ref.rstrip()
+                self._set_directories(ref)
             list_in.close()
         self._get_blast_binaries()
 
@@ -95,7 +96,7 @@ class Orthologues_identifier():
         # Create the refseq blast database
         ref_fasta = None
         for fasta_file in self.fasta_files:
-            if ref == fasta_file.stem:
+            if ref in fasta_file.name:
                 ref_fasta = fasta_file
         if ref_fasta == None:
             raise FileNotFoundError(f"{ref} is not in input fasta file names")
@@ -248,11 +249,12 @@ class Orthologues_identifier():
         if self.ref_list != None:
             list_in = open(self.ref_list, "r")
             for ref in list_in:
+                ref = ref.rstrip()
                 refs.append(ref)
             list_in.close()
         for idx, ref in enumerate(refs):
             if idx > 0:
-                print("-" * 150)
+                print("-" * 200)
             print(f"Reference strain: {ref}")
             ref_fasta = self.reciprocal_blast(ref)
             self.parse_blast_results(ref)

@@ -4,13 +4,12 @@ from typing import Union
 from pathlib import Path
 
 class Core_identifier():
-    def __init__(self, orthology_fin: Path, ref_list: Union[None,Path], out_dir: Path, species_file: Union[None,Path], core_perc: float):
+    def __init__(self, orthology_fin: Path, out_dir: Path, species_file: Union[None,Path], core_perc: float):
         """
         """
         self.core_perc = core_perc
         self.out_dir = out_dir / "Core_and_fingerprints"
         self.orthology_fin = orthology_fin
-        self.ref_list = ref_list
         # Split the genomes into groups
         self.genus = True
         self.species_df = None
@@ -79,27 +78,18 @@ class Core_identifier():
 
     def calculate_core(self):
         self.setup_directories()
-        file_list = [self.orthology_fin]
-        if self.ref_list != None:
-            file_list = []
-            rf = open(self.ref_list, "r")
-            for line in rf:
-                line = line.rstrip()
-                file_list.append(line)
-        for fin in file_list:
-            self.orthology_fin = fin
-            self.load_orthology_matrix()
-            self.split_genomes_into_groups()
-            # Calculate the presence of each protein
-            final_df = self.calculate_protein_presence()
-            # Identify the core proteins
-            core_protein_data = self.identify_core_proteins(final_df)
-            core_protein_data_df = pd.DataFrame.from_dict(core_protein_data, orient="index")
-            core_protein_data_df.index.name = self.ref
-            if self.genus:
-                fout = self.out_dir / f"{self.ref}_core.xlsx"
-                core_protein_data_df = core_protein_data_df.drop("Is fingerprint", axis=1)
-            else:
-                fout = self.out_dir / f"{self.ref}_species_core.xlsx"
-            core_protein_data_df.to_excel(fout)
+        self.load_orthology_matrix()
+        self.split_genomes_into_groups()
+        # Calculate the presence of each protein
+        final_df = self.calculate_protein_presence()
+        # Identify the core proteins
+        core_protein_data = self.identify_core_proteins(final_df)
+        core_protein_data_df = pd.DataFrame.from_dict(core_protein_data, orient="index")
+        core_protein_data_df.index.name = self.ref
+        if self.genus:
+            fout = self.out_dir / f"{self.ref}_core.xlsx"
+            core_protein_data_df = core_protein_data_df.drop("Is fingerprint", axis=1)
+        else:
+            fout = self.out_dir / f"{self.ref}_species_core.xlsx"
+        core_protein_data_df.to_excel(fout)
 
