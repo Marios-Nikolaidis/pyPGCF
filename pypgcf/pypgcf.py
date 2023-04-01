@@ -8,17 +8,18 @@ email: marionik23@gmail.com
 # TODO
 # 1. Add nucleotide input for eggnog
 # 2. Add cleaning of BLAST database after completion of orthologues detection
+# 3. Test reflist parsing in core module
 ######################
 
 import argparse
 import config
 from pathlib import Path
-from species_demarcation.species_demarcation import SpeciesDemarcator
-from orthologues.orthologues import Orthologues_identifier
-from core.core import Core_identifier
-from phylogenomic.phylogenomic import Phylogenomic
-from eggnog.eggnog import eggNOGRunner, eggNOGParser
-from smbgc.smbgc import smBGCLocalRunner, smBGCParser, smBGCInstaller
+from species_demarcation import SpeciesDemarcator
+from orthologues import Orthologues_identifier
+from core import Core_identifier
+from phylogenomic import Phylogenomic
+from eggnog import eggNOGRunner, eggNOGParser, eggNOGInstaller
+from smbgc import smBGCLocalRunner, smBGCParser, smBGCInstaller
 
 def main():
     parser = argparse.ArgumentParser(
@@ -34,14 +35,15 @@ def main():
     species_demarcation.add_argument("-in", metavar="input" , help="Genome fasta directory", required=True)
     species_demarcation.add_argument("-o", metavar="out", help="Output directory", required=True)
     species_demarcation_fastani = species_demarcation.add_argument_group("FastANI options")
-    species_demarcation_fastani.add_argument("--fastani_cores", help="Number of cores for FastANI", default=config.species_demarcation_cores)
-    species_demarcation_fastani.add_argument("--kmer", help="kmer size", default=config.species_demarcation_kmer)
-    species_demarcation_fastani.add_argument("--fraglen", help="Fragment length", default=config.species_demarcation_fraglen)
-    species_demarcation_fastani.add_argument("--minfraction", help="Minimum fraction", default=config.species_demarcation_minfraction)
+    species_demarcation_fastani.add_argument("--fastani_cores", help="Number of cores for FastANI", default=config.species_demarcation_cores, type=int)
+    species_demarcation_fastani.add_argument("--kmer", metavar="N", help="kmer size (<= 16)", default=config.species_demarcation_kmer, type=int)
+    species_demarcation_fastani.add_argument("--fraglen", metavar="N", help="Fragment length", default=config.species_demarcation_fraglen, type=int)
+    species_demarcation_fastani.add_argument("--minfraction", metavar="N", help="Minimum fraction", default=config.species_demarcation_minfraction, type=float)
     species_demarcation_mcl = species_demarcation.add_argument_group("MCL options")
     species_demarcation_mcl.add_argument("--inflation", help="Inflation parameter for MCL", default=config.species_demarcation_mcl_inflation)
-    species_demarcation_mcl.add_argument("--mcl_cores", help="Number of cores for MCL", default=config.species_demarcation_cores)
-    #
+    species_demarcation_mcl.add_argument("--mcl_cores", help="Number of cores for MCL", default=config.species_demarcation_cores, type=int)
+
+    # orthologues module
     orthologues = subparsers.add_parser("orthologues", help="orthologues module", formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Calculate the orthologues of the dataset using one reference strain")
     orthologues_basic = orthologues.add_argument_group("Basic options")
     orthologues_basic.add_argument("-in", metavar="in", help="Fasta directory", required=True)
@@ -56,12 +58,16 @@ def main():
     orthologues_blast.add_argument("--dmnd_sensitivity", help="Sensitivity settings for DIAMOND", default=config.orthologues_dmnd_sensitivity)
     orthologues_blast.add_argument("--no_filter_orthologues", help="Do not filter orthologues", action="store_true")
     
+    # core module
     core = subparsers.add_parser("core", help="core module", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    core.add_argument("-in", help="Input orthology matrix", required=True)
+    core_input_group = core.add_mutually_exclusive_group(required=True)
+    core_input_group.add_argument("-in", help="Input orthology matrix")
+    core_input_group.add_argument("-ref_list", help="List of orthology matrices and species annotation files to use for multiple analyses")
     core.add_argument("-o", help="Output directory", required=True)
     core.add_argument("--species", help="Input species assignment matrix (excel format)")
-    core.add_argument("--core_perc", help="Percent presence of a gene in a cluster to be considered core", default=config.core_core_perc)
+    core.add_argument("--core_perc", help="Percent presence of a protein/gene in a cluster to be considered core", default=config.core_core_perc)
     
+    # phylogenomic module
     phylogenomic = subparsers.add_parser("phylogenomic", help="phylogenomic module", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     phylogenomic.add_argument("-fasta_dir", help="Input fasta directory", required=True)
     phylogenomic.add_argument("-in", help="Input Orthology matrix", required=True)
@@ -74,17 +80,19 @@ def main():
     
     # eggnog module
     eggnog = subparsers.add_parser("eggnog", help="eggnog module", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    eggnog.add_argument("-in", metavar="in", help="Input core proteins file", required=True)
+    eggnog_input = eggnog.add_mutually_exclusive_group(required=True)
+    eggnog_input.add_argument("-in", metavar="in", help="Excel file with core proteins (from 'core' module)")
+    eggnog_input.add_argument("-ref_list", metavar="in", help="File with a list of excel files (for multiple reference strains)")
     eggnog.add_argument("-fasta_dir", metavar="fasta_dir", help="Input fasta directory", required=True)
     eggnog.add_argument("-o", metavar="o", help="Output directory", required=True)
-    eggnog.add_argument("--eggnog_results", metavar="file", help="Pre-computed eggnog results")
+    # eggnog.add_argument("--eggnog_results", metavar="file", help="Pre-computed eggnog results")
     eggnog_mapper = eggnog.add_argument_group("eggNOG mapper options")
     eggnog_mapper.add_argument("--cores", metavar="N", help="Number of cores", default=config.eggnog_cores, type=int)
     eggnog_mapper.add_argument("--pident", metavar="N", help="Percent identity", default=config.eggnog_pident)
     eggnog_mapper.add_argument("--qcov", metavar="N", help="Query coverage", default=config.eggnog_qcov)
     eggnog_mapper.add_argument("--scov", metavar="N", help="Suject coverage", default=config.eggnog_scov)
     eggnog_installer = eggnog.add_argument_group("Installer options")
-    eggnog.add_argument("--install", help="Install eggnog-mapper and the databases", action="store_true")
+    eggnog_installer.add_argument("--install", help="Install the eggNOG database", action="store_true")
     
     # smbgc module
     smbgc = subparsers.add_parser("smbgc", help="smbgc module", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -129,7 +137,7 @@ def main():
         if species_file != None:
             species_file = Path(species_file)
         core_perc = args["core_perc"]
-        core_identifier = Core_identifier(og_matrix_in, out_dir, species_file, core_perc)
+        core_identifier = Core_identifier(og_matrix_in, ref_list, out_dir, species_file, core_perc)
         core_identifier.calculate_core()
     
     if args["module"] == "phylogenomic":
@@ -144,7 +152,6 @@ def main():
     
     if args["module"] == "eggnog":
         fasta_dir = Path(args["fasta_dir"])
-        core_proteins_file = Path(args["in"])
         out_dir = Path(args["o"])
         precomputed_results = args["eggnog_results"]
         if precomputed_results != None:
@@ -155,18 +162,27 @@ def main():
         scov = args["scov"] # Subject coverage
         install = args["install"]
         if install:
-            pass
+            installer = eggNOGInstaller()
+            installer.download_databases()
+            return 
+        core_proteins_file = args["in"]
+        core_proteins_file_list = args["ref_list"]
+        if core_proteins_file != None:
+            core_proteins_file_list = [Path(core_proteins_file)]
         else:
+            core_proteins_file_list = [Path(core_proteins_file) for core_proteins_file in core_proteins_file_list]
+        for core_proteins_file in core_proteins_file_list:
+            core_proteins_file = Path(core_proteins_file)
             runner = eggNOGRunner(fasta_dir, core_proteins_file, out_dir, cores, pident, qcov, scov)
             runner.execute_eggnog_mapper()
-            parser = eggNOGParser(fasta_dir, core_proteins_file, out_dir)
-            parser.gather_eggnog_results()
+        # parser = eggNOGParser(fasta_dir, core_proteins_file_list, out_dir)
+        # parser.gather_eggnog_results()
     
     if args["module"] == "smbgc":
         install = args["install"]
         if install:
             installer = smBGCInstaller()
-            installer.install_antismash()
+            # installer.install_antismash()
             installer.install_databases()
         else:
             fasta_dir = Path(args["fasta_dir"])

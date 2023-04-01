@@ -3,5 +3,6 @@ src/__pycache__/*
 resources/*
 examples/*
 example/*
-tests/*
 archives/*
+data/
+data/*

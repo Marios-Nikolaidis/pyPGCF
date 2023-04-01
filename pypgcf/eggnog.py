@@ -8,16 +8,15 @@ from typing import Tuple, List
 import os
 
 class eggNOGInstaller():
-    def __init__(self, resources_dir: Path, debug: bool):
-        self.resources_dir = resources_dir
+    def __init__(self, debug: bool=False):
         self.debug = debug
 
-    def install_emapper(self):
-        print("Installing eggnog mapper")
-        cmd = "pip install eggnog-mapper"
-        if self.debug:
-            cmd = "pip install --dry-run -v eggnog-mapper"
-        os.system(cmd)
+    # def install_emapper(self):
+    #     print("Installing eggnog mapper")
+    #     cmd = "pip install eggnog-mapper"
+    #     if self.debug:
+    #         cmd = "pip install --dry-run -v eggnog-mapper"
+    #     os.system(cmd)
     
     def download_databases(self):
         cmd = f"download_eggnog_data.py -y"
@@ -27,22 +26,18 @@ class eggNOGInstaller():
             cmd = f"download_eggnog_data.py -s -y"
         os.system(cmd)
 
-    def install(self):
-        self.install_emapper()
-        self.download_databases()
-
 class eggNOGRunner():
     def __init__(self, fasta_dir: Path, core_protein_table_f: Path, out_dir: Path, cores: int, pident: float, qcov: float, scov: float, debug: bool=False):
         #self.resources_dir = resources_dir
         self.fasta_dir = fasta_dir
         self.core_protein_table = pd.read_excel(core_protein_table_f, index_col=0)
-        self.out_dir = out_dir / "eggNOG"
+        self.ref = self.core_protein_table.index.name
+        self.out_dir = out_dir / "eggNOG" / str(self.ref)
+        self.eggnog_raw_results_file = self.out_dir/"eggNOG_results.csv"
         self.cores = cores
         self.pident = pident
         self.qcov =  qcov
         self.scov = scov
-        self.ref = self.core_protein_table.index.name
-        self.eggnog_raw_results_file = self.out_dir/"eggNOG_results.csv"
         self.debug = debug
 
     def setup_directories(self):
@@ -95,7 +90,7 @@ class eggNOGRunner():
         self.clean_unessecary_output()
 
 class eggNOGParser():
-    def __init__(self, fasta_dir: Path, core_protein_table_f: Path, out_dir: Path):
+    def __init__(self, fasta_dir: Path, core_protein_table_file_list: List[Path], out_dir: Path):
         self.fasta_dir = fasta_dir
         self.core_protein_table = pd.read_excel(core_protein_table_f, index_col=0)
         self.out_dir = out_dir / "eggNOG"
