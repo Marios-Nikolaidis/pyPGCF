@@ -4,29 +4,21 @@ Author: Marios Nikolaidis
 Git: https://github.com/Marios-Nikolaidis
 email: marionik23@gmail.com
 """
-######################
-# TODO
-# 1. Add nucleotide input for eggnog
-# 2. Add cleaning of BLAST database after completion of orthologues detection
-# 3. Test reflist parsing in core module
-######################
-
 import argparse
-import config
+from pypgcf import config
 from pathlib import Path
-from species_demarcation import SpeciesDemarcator
-from orthologues import Orthologues_identifier
-from core import Core_identifier
-from phylogenomic import Phylogenomic
-from eggnog import eggNOGRunner, eggNOGParser, eggNOGInstaller
-from smbgc import smBGCLocalRunner, smBGCParser, smBGCInstaller
+from pypgcf.species_demarcation import SpeciesDemarcator
+from pypgcf.orthologues import Orthologues_identifier
+from pypgcf.core import Core_identifier
+from pypgcf.phylogenomic import Phylogenomic
+from pypgcf.eggnog import eggNOGRunner, eggNOGParser, eggNOGInstaller
+from pypgcf.smbgc import smBGCLocalRunner, smBGCParser, smBGCInstaller
 
 def main():
     parser = argparse.ArgumentParser(
             prog="package",
             formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-            description="This is a description of the program",
-            epilog="This is a description of the program",
+            description="pyPGCF: PhyloGenomic, Core and Fingerprint analysis software",
             allow_abbrev=False
     )
     subparsers = parser.add_subparsers(help="The various modules of the program", dest="module", required=True)
@@ -76,13 +68,13 @@ def main():
     phylogenomic_alns = phylogenomic.add_argument_group("Intermediate fasta files options")
     phylogenomic_alns.add_argument("--no_keep_fasta", help="Remove the orthologous groups fasta files after completion", action="store_true")
     phylogenomic_tree = phylogenomic.add_argument_group("IQTree2 options")
-    phylogenomic_tree.add_argument("--tree_model", help="Tree model")
+    phylogenomic_tree.add_argument("--tree_model", help="Specific evolutionary model for tree calculation")
     
     # eggnog module
     eggnog = subparsers.add_parser("eggnog", help="eggnog module", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     eggnog_input = eggnog.add_mutually_exclusive_group(required=True)
     eggnog_input.add_argument("-in", metavar="in", help="Excel file with core proteins (from 'core' module)")
-    eggnog_input.add_argument("-ref_list", metavar="in", help="File with a list of excel files (for multiple reference strains)")
+    eggnog_input.add_argument("-in_list", metavar="in", help="File with a list of excel files (for multiple reference strains)")
     eggnog.add_argument("-fasta_dir", metavar="fasta_dir", help="Input fasta directory", required=True)
     eggnog.add_argument("-o", metavar="o", help="Output directory", required=True)
     # eggnog.add_argument("--eggnog_results", metavar="file", help="Pre-computed eggnog results")
@@ -177,7 +169,7 @@ def main():
             installer.download_databases()
             return 
         core_proteins_file = args["in"]
-        core_protein_files_reflist = args["ref_list"]
+        core_protein_files_reflist = args["in_list"]
         if core_proteins_file != None:
             core_proteins_file_list = [core_proteins_file]
         else:
