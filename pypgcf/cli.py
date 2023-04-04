@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Author: Marios Nikolaidis
 Git: https://github.com/Marios-Nikolaidis
@@ -202,5 +201,3 @@ def main():
             parser = smBGCParser(out_dir, cores)
             parser.gather_results()
 
-if __name__ == "__main__":
-    main()
