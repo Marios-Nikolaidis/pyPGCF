@@ -5,14 +5,14 @@ Git: https://github.com/Marios-Nikolaidis
 email: marionik23@gmail.com
 """
 import argparse
-from pypgcf import config
+from . import config
 from pathlib import Path
-from pypgcf.species_demarcation import SpeciesDemarcator
-from pypgcf.orthologues import Orthologues_identifier
-from pypgcf.core import Core_identifier
-from pypgcf.phylogenomic import Phylogenomic
-from pypgcf.eggnog import eggNOGRunner, eggNOGParser, eggNOGInstaller
-from pypgcf.smbgc import smBGCLocalRunner, smBGCParser, smBGCInstaller
+from .species_demarcation import SpeciesDemarcator
+from .orthologues import Orthologues_identifier
+from .core import Core_identifier
+from .phylogenomic import Phylogenomic
+from .eggnog import eggNOGRunner, eggNOGParser, eggNOGInstaller
+from .smbgc import smBGCLocalRunner, smBGCParser, smBGCInstaller
 
 def main():
     parser = argparse.ArgumentParser(
