@@ -12,7 +12,7 @@ setup(
     url="https://github.com/Marios-Nikolaidis/pyPGCF",
     license="GPL",
     description="pyPGCF: PhyloGenomic, Core and Fingerprint analyses package",
-    #packages=find_packages(),
+    packages=["pypgcf"],
     entry_points={
         'console_scripts': [
             'pyPGCF = pypgcf.cli:main',

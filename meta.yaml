@@ -14,9 +14,10 @@ source:
 build:
   number: 0
   noarch: python
-  entry_points:
-    pyPGCF = pypgcf.pyPGCF:main
-
+  # entry_points:
+  #   console_scripts:
+  #     pyPGCF = pypgcf.pyPGCF:main
+  #
 requirements:
   host:
     - pip
