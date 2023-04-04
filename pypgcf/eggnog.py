@@ -14,8 +14,8 @@ class eggNOGInstaller():
 
     def query_project_base_directory(self):
         base_dir = Path(sysconfig.get_config_var("BINLIBDEST"))
-        data_dir = base_dir / "data"
-        data_dir.mkdir(exist_ok=True)
+        data_dir = base_dir / "site-packages" / "data"
+        data_dir.mkdir(exist_ok=True, parents=True)
     
     def download_databases(self):
         self.query_project_base_directory()

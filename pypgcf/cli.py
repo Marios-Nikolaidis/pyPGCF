@@ -71,11 +71,11 @@ def main():
     
     # eggnog module
     eggnog = subparsers.add_parser("eggnog", help="eggnog module", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    eggnog_input = eggnog.add_mutually_exclusive_group(required=True)
+    eggnog_input = eggnog.add_mutually_exclusive_group()
     eggnog_input.add_argument("-in", metavar="in", help="Excel file with core proteins (from 'core' module)")
     eggnog_input.add_argument("-in_list", metavar="in", help="File with a list of excel files (for multiple reference strains)")
-    eggnog.add_argument("-fasta_dir", metavar="fasta_dir", help="Input fasta directory", required=True)
-    eggnog.add_argument("-o", metavar="o", help="Output directory", required=True)
+    eggnog.add_argument("-fasta_dir", metavar="fasta_dir", help="Input fasta directory")
+    eggnog.add_argument("-o", metavar="o", help="Output directory")
     # eggnog.add_argument("--eggnog_results", metavar="file", help="Pre-computed eggnog results")
     eggnog_mapper = eggnog.add_argument_group("eggNOG mapper options")
     eggnog_mapper.add_argument("--cores", metavar="N", help="Number of cores", default=config.eggnog_cores, type=int)
