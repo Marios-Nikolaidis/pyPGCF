@@ -15,6 +15,7 @@ class eggNOGInstaller():
     def query_project_base_directory(self):
         base_dir = Path(sysconfig.get_config_var("projectbase"))
         data_dir = base_dir / "data"
+        print(f"Data dir: {data_dir}")
         data_dir.mkdir(exist_ok=True)
     
     def download_databases(self):
