@@ -6,23 +6,21 @@ from Bio import SeqIO
 from pathlib import Path
 from typing import Tuple, List
 import os
+import sysconfig
 
 class eggNOGInstaller():
     def __init__(self, debug: bool=False):
         self.debug = debug
 
-    # def install_emapper(self):
-    #     print("Installing eggnog mapper")
-    #     cmd = "pip install eggnog-mapper"
-    #     if self.debug:
-    #         cmd = "pip install --dry-run -v eggnog-mapper"
-    #     os.system(cmd)
+    def query_project_base_directory(self):
+        base_dir = Path(sysconfig.get_config_var("projectbase"))
+        data_dir = base_dir / "data"
+        data_dir.mkdir(exist_ok=True)
     
     def download_databases(self):
+        self.query_project_base_directory()
         cmd = f"download_eggnog_data.py -y"
-        #cmd = f"download_eggnog_data.py -y --data_dir {self.resources_dir}"
         if self.debug:
-            #cmd = f"download_eggnog_data.py -s -y --data_dir {self.resources_dir}"
             cmd = f"download_eggnog_data.py -s -y"
         os.system(cmd)
 
