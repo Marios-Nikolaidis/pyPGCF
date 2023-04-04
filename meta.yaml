@@ -24,8 +24,6 @@ requirements:
     - python >=3.7
   run:
     - python >=3.7
-    - eggnog-mapper
-    - antismash
     - iqtree >=2.*
     - gblocks
     - muscle ==3.8.*
@@ -33,6 +31,9 @@ requirements:
     - xlsxwriter
     - openpyxl
     - tqdm
+    - eggnog-mapper
+    - biopython ==1.78
+    - antismash
 
 about:
   home: "https://github.com/Marios-Nikolaidis/pyPGCF"
