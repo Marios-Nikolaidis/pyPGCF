@@ -4,37 +4,15 @@ from concurrent.futures import ProcessPoolExecutor
 import json
 import pandas as pd
 from tqdm import tqdm
-#import requests
-#from Bio import SeqIO
-#import asyncio
-#import time
-#from tqdm import tqdm
 
 class smBGCInstaller():
     def __init__(self, debug: bool=False):
         self.debug = debug
 
-    def install_antismash(self):
-        print("Installing antiSMASH... this will take some time")
-        cmds = [
-                #"conda config --add channels defaults",
-                #"conda config --add channels bioconda",
-                #"conda config --add channels conda-forge",
-            #"conda install -y -c bioconda antismash"
-            "mamba install -y -c bioconda antismash",
-        ]
-        # TODO: Should check if mamba is installed and use that instead of conda
-        for cmd in cmds:
-            os.system(cmd)
-
     def install_databases(self):
         print("Downloading databases of antiSMASH")
         cmd = "download-antismash-databases"
         os.system(cmd)
-
-if __name__ == "__main__":
-    installer = smBGCInstaller()
-    installer.install_antismash()
 
 class smBGCLocalRunner():
     def __init__(self, genome_fasta_dir: Path, out_dir: Path, cores: int, strictness: str, genefinding_tool: str):
