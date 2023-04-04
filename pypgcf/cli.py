@@ -153,22 +153,30 @@ def main():
         phylogenomic.run_phylogenomic()
     
     if args["module"] == "eggnog":
-        fasta_dir = Path(args["fasta_dir"])
-        out_dir = Path(args["o"])
-        # precomputed_results = args["eggnog_results"]
-        # if precomputed_results != None:
-        #     precomputed_results = Path(precomputed_results)
-        cores = args["cores"]
-        pident = args["pident"]
-        qcov = args["qcov"] # Query coverage
-        scov = args["scov"] # Subject coverage
         install = args["install"]
         if install:
             installer = eggNOGInstaller()
             installer.download_databases()
             return 
+        fasta_dir = args["fasta_dir"]
+        out_dir = args["o"]
+        if fasta_dir == None:
+            print(f"-fasta_dir is needed")
+            return
+        if out_dir == None:
+            print(f"-o is needed")
+            return
+        fasta_dir = Path(fasta_dir)
+        out_dir = Path(out_dir)
+        cores = args["cores"]
+        pident = args["pident"]
+        qcov = args["qcov"] # Query coverage
+        scov = args["scov"] # Subject coverage
         core_proteins_file = args["in"]
         core_protein_files_reflist = args["in_list"]
+        if core_proteins_file == None and core_protein_files_reflist == None:
+            print("-in or -in_list are needed")
+            return
         if core_proteins_file != None:
             core_proteins_file_list = [core_proteins_file]
         else:
@@ -188,7 +196,6 @@ def main():
         install = args["install"]
         if install:
             installer = smBGCInstaller()
-            # installer.install_antismash()
             installer.install_databases()
         else:
             fasta_dir = Path(args["fasta_dir"])
