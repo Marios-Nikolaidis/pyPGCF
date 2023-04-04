@@ -13,9 +13,8 @@ class eggNOGInstaller():
         self.debug = debug
 
     def query_project_base_directory(self):
-        base_dir = Path(sysconfig.get_config_var("projectbase"))
+        base_dir = Path(sysconfig.get_config_var("BINLIBDEST"))
         data_dir = base_dir / "data"
-        print(f"Data dir: {data_dir}")
         data_dir.mkdir(exist_ok=True)
     
     def download_databases(self):
@@ -27,7 +26,6 @@ class eggNOGInstaller():
 
 class eggNOGRunner():
     def __init__(self, fasta_dir: Path, core_protein_table_f: Path, out_dir: Path, cores: int, pident: float, qcov: float, scov: float, debug: bool=False):
-        #self.resources_dir = resources_dir
         self.fasta_dir = fasta_dir
         self.core_protein_table = pd.read_excel(core_protein_table_f, index_col=0)
         self.ref = str(self.core_protein_table.index.name)
@@ -55,7 +53,6 @@ class eggNOGRunner():
     def create_eggnog_cmd(self):
         eggnog_cmd = " ".join([
             "emapper.py",
-            #f"--data_dir {self.resources_dir}",
             f"--cpu {self.cores}",
             f"--pident {self.pident}",
             f"--query_cov {self.qcov}",
