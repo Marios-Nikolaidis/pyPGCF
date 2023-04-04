@@ -35,10 +35,6 @@ class Orthologues_identifier():
         
 
     def _get_blast_binaries(self) -> None:
-        #resources_dir = Path('../../resources/')
-        #makeblastdb_bin = Path(__file__).parent/resources_dir/"makeblastdb" #/ .replace(os.path.basename(__file__) + "/", "")
-        #blastn_bin = Path(__file__).parent/resources_dir/"blastn" #/ .replace(os.path.basename(__file__) + "/", "")
-        #diamond_bin = Path(__file__).parent/resources_dir/"diamond" #/ .replace(os.path.basename(__file__) + "/", "")
         diamond_bin = "diamond"
         blastn_bin = "blastn"
         makeblastdb_bin = "makeblastdb"
@@ -134,8 +130,8 @@ class Orthologues_identifier():
             """
             indeces_to_keep = []
             first_col = df.columns[0]
-            for grp in df.groupby(first_col):
-                indeces_to_keep.append(grp[1].index[0])
+            for _, grp_df in df.groupby(first_col):
+                indeces_to_keep.append(grp_df["Bitscore"].idxmax())
             return df.loc[indeces_to_keep].reset_index(drop=True)
     
         def _orthologue_filter(df: pd.DataFrame) -> pd.DataFrame:
@@ -143,8 +139,8 @@ class Orthologues_identifier():
             Helper function to create the distribution of percent identities for all the genes in the data frame
             Filter the hits that have perc. identity lower than -2 SD
             """
-            pid_std  = df.Pident.std( axis=0, numeric_only=True)
-            pid_mean = df.Pident.mean(axis=0, numeric_only=True)
+            pid_std  = df.Pident.values.std(axis=0)
+            pid_mean = df.Pident.values.mean(axis=0)
             drop_condition = pid_mean - (2 * pid_std)
             return df.drop(df[df.Pident < drop_condition].index)
     
@@ -158,12 +154,12 @@ class Orthologues_identifier():
             tmp_df = pd.merge(ref_vs_query_df, query_vs_ref_df, on="RefSeq")
             df = tmp_df.drop(tmp_df[tmp_df.QuerySeq_x != tmp_df.QuerySeq_y].index)
             case1 = df[df['Pident_x'] >= df['Pident_y']]
-            case1 = case1[['RefSeq', 'QuerySeq_x', 'Pident_x', 'Evalue_x']]
-            case1 = case1.rename(columns={'QuerySeq_x':'QuerySeq', 'Pident_x':'Pident', 'Evalue_x':'Evalue'})
+            case1 = case1[['RefSeq', 'QuerySeq_x', 'Pident_x', 'Evalue_x', "Bitscore_x"]]
+            case1 = case1.rename(columns={'QuerySeq_x':'QuerySeq', 'Pident_x':'Pident', 'Evalue_x':'Evalue', 'Bitscore_x': 'Bitscore'})
             case2 = df[df['Pident_x'] < df['Pident_y']]
-            case2 = case2.rename(columns={'QuerySeq_y':'QuerySeq', 'Pident_y':'Pident', 'Evalue_y':'Evalue'})
+            case2 = case2.rename(columns={'QuerySeq_y':'QuerySeq', 'Pident_y':'Pident', 'Evalue_y':'Evalue', 'Bitscore_y': 'Bitscore'})
             df = pd.concat([case1,case2])
-            return df[['RefSeq', 'QuerySeq', 'Pident', 'Evalue']]
+            return df[['RefSeq', 'QuerySeq', 'Pident']]
     
         logging.debug("Parsing BLAST results")
         fasta_files = self.fasta_files
@@ -173,18 +169,12 @@ class Orthologues_identifier():
             ref_vs_query_file = self.out_dir / ref / "Blast_results" / (fasta_file.name + "_vs_reference.txt")
             query_vs_ref_file = self.out_dir / ref / "Blast_results" / (fasta_file.name + "_vs_reference_reverse.txt")
     
-            c1 = ["RefSeq", "QuerySeq", "Pident", "Evalue"]
-            c2 = ["QuerySeq", "RefSeq", "Pident", "Evalue"]
+            c1 = ["RefSeq", "QuerySeq", "Pident", "Evalue", "Bitscore"]
+            c2 = ["QuerySeq", "RefSeq", "Pident", "Evalue", "Bitscore"]
             
-            ref_vs_query_df = pd.read_csv(ref_vs_query_file,  sep="\t", names=c1, usecols=[0, 1, 2, 10] )
-            query_vs_ref_df = pd.read_csv(query_vs_ref_file,  sep="\t", names=c2, usecols=[0, 1, 2, 10] )
+            ref_vs_query_df = pd.read_csv(ref_vs_query_file,  sep="\t", names=c1, usecols=[0, 1, 2, 10, 11] )
+            query_vs_ref_df = pd.read_csv(query_vs_ref_file,  sep="\t", names=c2, usecols=[0, 1, 2, 10, 11] )
             
-            ref_vs_query_df.iloc[:, 0] = ref_vs_query_df.iloc[:, 0].astype(str)
-            ref_vs_query_df.iloc[:, 1] = ref_vs_query_df.iloc[:, 1].astype(str)
-    
-            query_vs_ref_df.iloc[:, 0] = query_vs_ref_df.iloc[:, 0].astype(str)
-            query_vs_ref_df.iloc[:, 1] = query_vs_ref_df.iloc[:, 1].astype(str)
-    
             # Blast output
             # qaccver saccver pident length mismatch gapopen qstart qend sstart send evalue bitscore
             ref_vs_query_df = _get_best_subject(ref_vs_query_df)
