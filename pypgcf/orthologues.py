@@ -230,6 +230,12 @@ class Orthologues_identifier():
         orthology_matrix_f = self.out_dir / ref / "OGmatrix.csv"
         orthology_matrix_df.to_csv(orthology_matrix_f, sep = '\t', na_rep="X") # Contains all the COGs
 
+    def clean_blastdb_dir(self, ref):
+        database_dir = self.out_dir / ref / "Blast_DB"
+        for item in database_dir.glob("*"):
+            item.unlink()
+        database_dir.rmdir()
+
     def calculate_orthologues(self):
         refs = []
         self.setup()
@@ -248,6 +254,7 @@ class Orthologues_identifier():
             print(f"Reference strain: {ref}")
             ref_fasta = self.reciprocal_blast(ref)
             self.parse_blast_results(ref)
+            self.clean_blastdb_dir(ref)
             print("Creating orthology matrix")
             self.create_orthology_matrix(ref, ref_fasta)
             print("Done")
