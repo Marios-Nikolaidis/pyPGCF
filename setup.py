@@ -3,10 +3,11 @@ try:
 except ImportError:
     from distutils.core import setup
 
+__version__ = "0.1.1"
 
 setup(
     name='pypgcf',
-    version='0.1.1',
+    version=__version__,
     author="Marios Nikolaidis",
     author_email="marionik23@gmail.com",
     url="https://github.com/Marios-Nikolaidis/pyPGCF",
