@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 import numpy as np
 from typing import Tuple, Union
+from datetime import datetime
 
 class Orthologues_identifier():
     def __init__(self, fasta_dir: Path, out_dir: Path, ref: Union[str, None], 
@@ -251,11 +252,12 @@ class Orthologues_identifier():
         for idx, ref in enumerate(refs):
             if idx > 0:
                 print("-" * 200)
-            print(f"Reference strain: {ref}")
+            print(f"Calulating orthologues with reference {ref}: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
             ref_fasta = self.reciprocal_blast(ref)
             self.parse_blast_results(ref)
             self.clean_blastdb_dir(ref)
             print("Creating orthology matrix")
+            print(f"Creating orthology matrix: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
             self.create_orthology_matrix(ref, ref_fasta)
-            print("Done")
+            print(f"Done: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
 

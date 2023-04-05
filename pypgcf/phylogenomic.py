@@ -38,7 +38,7 @@ class Phylogenomic():
         self.og_fasta_dir_aln.mkdir(exist_ok=True, parents=True)
         self.iqtree_results_dir.mkdir(exist_ok=True, parents=True)
 
-    def _turn_orthology_matrix_to_binary(self):
+    def _replace_empty_with_na_in_orthology_matrix(self):
         self.orthology_matrix = self.orthology_matrix.applymap(lambda x: np_nan if x == "X" else x)
 
     def create_og_fasta(self):
@@ -46,8 +46,11 @@ class Phylogenomic():
         Create a fasta file for each cluster of orthologous genes
         :return: None
         """
-        self._turn_orthology_matrix_to_binary()
+        self._replace_empty_with_na_in_orthology_matrix()
         self.orthology_matrix = self.orthology_matrix.dropna()
+        if self.orthology_matrix.shape[0] == 0:
+            print(f"Could not identify orthologous groups with orthologues from all genomes")
+            import sys;sys.exit()
         organisms: List = [self.orthology_matrix.index.name]
         organisms.extend(self.orthology_matrix.columns.tolist())
         fasta_files: Generator = self.fasta_dir.glob("*")
@@ -175,14 +178,14 @@ class Phylogenomic():
 
     def run_phylogenomic(self) -> Union[None, int]:
         self.setup_directories()
-        print(f"Creating fasta files of each orthologous group {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
+        print(f"Creating fasta files of each orthologous group: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
         self.create_og_fasta()
-        print(f"Aligning fasta files of each orthologous group {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
+        print(f"Aligning fasta files of each orthologous group: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
         self.align_og_fasta()
-        print(f"Creating superalignment file {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
+        print(f"Creating superalignment file: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
         self.create_superalignment_file()
         self.filter_superalignment()
-        print(f"Computing phylogenomic tree {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
+        print(f"Computing phylogenomic tree: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
         self.compute_tree()
         self.move_iqtree_files()
         if self.no_keep_fasta:
