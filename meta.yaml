@@ -34,6 +34,7 @@ requirements:
     - eggnog-mapper
     - biopython ==1.78
     - antismash
+    - diamond ==2.0.13
 
 about:
   home: "https://github.com/Marios-Nikolaidis/pyPGCF"
