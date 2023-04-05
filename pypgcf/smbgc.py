@@ -4,6 +4,8 @@ from concurrent.futures import ProcessPoolExecutor
 import json
 import pandas as pd
 from tqdm import tqdm
+from multiprocessing import cpu_count
+from math import ceil as math_ceil
 
 class smBGCInstaller():
     def __init__(self, debug: bool=False):
@@ -32,18 +34,24 @@ class smBGCLocalRunner():
             "--cb-knownclusters",
             f"{genome_fasta_file.absolute()}",
             ])
-        return cmd
-
-    def run_antismash_cmd(self, cmd: str):
         os.system(cmd)
 
     def analyze_genomes(self):
+        system_cores = cpu_count()
+        maximum_number_of_available_jobs = math_ceil(system_cores / self.cores)
+        if maximum_number_of_available_jobs > 1:
+            maximum_number_of_available_jobs -= 1
+            # Keep the system running smoothly
         genome_files = list(self.genome_fasta_dir.glob("*"))
-        for genome_file in tqdm(genome_files, desc="Running antiSMASH", ascii=True, leave=True):
+        genome_out_dirs = []
+        for genome_file in genome_files:
             genome_out_dir = self.antismash_raw_results_dir / genome_file.stem
+            genome_out_dirs.append(genome_out_dir)
             genome_out_dir.mkdir(exist_ok=True, parents=True)
-            cmd = self.create_antismash_cmd(genome_file, genome_out_dir)
-            self.run_antismash_cmd(cmd)
+        with ProcessPoolExecutor(maximum_number_of_available_jobs) as executor:
+            res = executor.map(self.create_antismash_cmd, genome_files, genome_out_dirs)
+        for _ in tqdm(res, desc="Running antiSMASH", ascii=True, leave=True, total=len(genome_files)):
+            pass
 
 class smBGCParser():
     def __init__(self, out_dir: Path, cores: int):
