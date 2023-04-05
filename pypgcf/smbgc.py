@@ -49,9 +49,8 @@ class smBGCLocalRunner():
             genome_out_dirs.append(genome_out_dir)
             genome_out_dir.mkdir(exist_ok=True, parents=True)
         with ProcessPoolExecutor(maximum_number_of_available_jobs) as executor:
-            res = executor.map(self.create_antismash_cmd, genome_files, genome_out_dirs)
-        for _ in tqdm(res, desc="Running antiSMASH", ascii=True, leave=True, total=len(genome_files)):
-            pass
+            list(tqdm(executor.map(self.create_antismash_cmd, genome_files, genome_out_dirs), 
+                       desc="Running antiSMASH", ascii=True, leave=True, total=len(genome_files)))
 
 class smBGCParser():
     def __init__(self, out_dir: Path, cores: int):
