@@ -82,6 +82,7 @@ def main():
     eggnog_mapper.add_argument("--pident", metavar="N", help="Percent identity", default=config.eggnog_pident)
     eggnog_mapper.add_argument("--qcov", metavar="N", help="Query coverage", default=config.eggnog_qcov)
     eggnog_mapper.add_argument("--scov", metavar="N", help="Suject coverage", default=config.eggnog_scov)
+    eggnog_mapper.add_argument("--nucl", help="Specify that the input type is CDS", action="store_true")
     eggnog_installer = eggnog.add_argument_group("Installer options")
     eggnog_installer.add_argument("--install", help="Install the eggNOG database", action="store_true")
     
@@ -174,6 +175,7 @@ def main():
         scov = args["scov"] # Subject coverage
         core_proteins_file = args["in"]
         core_protein_files_reflist = args["in_list"]
+        nucl = args["nucl"]
         if core_proteins_file == None and core_protein_files_reflist == None:
             print("-in or -in_list are needed")
             return
@@ -187,7 +189,7 @@ def main():
         core_proteins_file_list = [Path(core_proteins_file) for core_proteins_file in core_proteins_file_list]
         for core_proteins_file in core_proteins_file_list:
             core_proteins_file = Path(core_proteins_file)
-            runner = eggNOGRunner(fasta_dir, core_proteins_file, out_dir, cores, pident, qcov, scov)
+            runner = eggNOGRunner(fasta_dir, core_proteins_file, out_dir, cores, pident, qcov, scov, nucl)
             runner.execute_eggnog_mapper()
         parser = eggNOGParser(fasta_dir, core_proteins_file_list, out_dir)
         parser.gather_eggnog_results()

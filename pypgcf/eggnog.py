@@ -25,7 +25,7 @@ class eggNOGInstaller():
         os.system(cmd)
 
 class eggNOGRunner():
-    def __init__(self, fasta_dir: Path, core_protein_table_f: Path, out_dir: Path, cores: int, pident: float, qcov: float, scov: float, debug: bool=False):
+    def __init__(self, fasta_dir: Path, core_protein_table_f: Path, out_dir: Path, cores: int, pident: float, qcov: float, scov: float, nucl: bool, debug: bool=False):
         self.fasta_dir = fasta_dir
         self.core_protein_table = pd.read_excel(core_protein_table_f, index_col=0)
         self.ref = str(self.core_protein_table.index.name)
@@ -35,6 +35,7 @@ class eggNOGRunner():
         self.pident = pident
         self.qcov =  qcov
         self.scov = scov
+        self.nucl = nucl
         self.debug = debug
 
     def setup_directories(self):
@@ -61,6 +62,18 @@ class eggNOGRunner():
             f"-i {self.fasta_file}",
             " > /dev/null "
             ])
+        if self.nucl:
+            eggnog_cmd = " ".join([
+                "emapper.py",
+                f"--cpu {self.cores}",
+                f"--pident {self.pident}",
+                f"--query_cov {self.qcov}",
+                f"--subject_cov {self.scov}",
+                "--itype CDS --translate",
+                f"-o {self.eggnog_raw_results_file}",
+                f"-i {self.fasta_file}",
+                " > /dev/null "
+                ])
         self.eggnog_cmd = eggnog_cmd
 
     def clean_unessecary_output(self):
