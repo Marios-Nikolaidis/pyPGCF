@@ -8,15 +8,16 @@ from typing import Tuple, List
 import os
 import sysconfig
 
-class eggNOGInstaller():
-    def __init__(self, debug: bool=False):
+
+class eggNOGInstaller:
+    def __init__(self, debug: bool = False):
         self.debug = debug
 
     def query_project_base_directory(self):
         base_dir = Path(sysconfig.get_config_var("BINLIBDEST"))
         data_dir = base_dir / "site-packages" / "data"
         data_dir.mkdir(exist_ok=True, parents=True)
-    
+
     def download_databases(self):
         self.query_project_base_directory()
         cmd = f"download_eggnog_data.py -y"
@@ -24,8 +25,19 @@ class eggNOGInstaller():
             cmd = f"download_eggnog_data.py -s -y"
         os.system(cmd)
 
-class eggNOGRunner():
-    def __init__(self, fasta_dir: Path, core_protein_table_f: Path, out_dir: Path, cores: int, pident: float, qcov: float, scov: float, debug: bool=False):
+
+class eggNOGRunner:
+    def __init__(
+        self,
+        fasta_dir: Path,
+        core_protein_table_f: Path,
+        out_dir: Path,
+        cores: int,
+        pident: float,
+        qcov: float,
+        scov: float,
+        debug: bool = False,
+    ):
         self.fasta_dir = fasta_dir
         self.core_protein_table = pd.read_excel(core_protein_table_f, index_col=0)
         self.ref = str(self.core_protein_table.index.name)
@@ -33,7 +45,7 @@ class eggNOGRunner():
         self.eggnog_raw_results_file = self.out_dir / (self.ref + "_eggNOG_results.csv")
         self.cores = cores
         self.pident = pident
-        self.qcov =  qcov
+        self.qcov = qcov
         self.scov = scov
         self.debug = debug
 
@@ -48,19 +60,23 @@ class eggNOGRunner():
             found = True
             self.fasta_file = fasta_file
         if not found:
-            raise FileNotFoundError(f"{self.ref} fasta file not found in {self.fasta_dir.name}")
+            raise FileNotFoundError(
+                f"{self.ref} fasta file not found in {self.fasta_dir.name}"
+            )
 
     def create_eggnog_cmd(self):
-        eggnog_cmd = " ".join([
-            "emapper.py",
-            f"--cpu {self.cores}",
-            f"--pident {self.pident}",
-            f"--query_cov {self.qcov}",
-            f"--subject_cov {self.scov}",
-            f"-o {self.eggnog_raw_results_file}",
-            f"-i {self.fasta_file}",
-            " > /dev/null "
-            ])
+        eggnog_cmd = " ".join(
+            [
+                "emapper.py",
+                f"--cpu {self.cores}",
+                f"--pident {self.pident}",
+                f"--query_cov {self.qcov}",
+                f"--subject_cov {self.scov}",
+                f"-o {self.eggnog_raw_results_file}",
+                f"-i {self.fasta_file}",
+                " > /dev/null ",
+            ]
+        )
         self.eggnog_cmd = eggnog_cmd
 
     def clean_unessecary_output(self):
@@ -68,58 +84,83 @@ class eggNOGRunner():
             self.eggnog_raw_results_file.with_suffix(".csv.emapper.hits"),
             self.eggnog_raw_results_file.with_suffix(".csv.emapper.seed_orthologs"),
         ]
-        file_to_rename = self.eggnog_raw_results_file.with_suffix(".csv.emapper.annotations")
+        file_to_rename = self.eggnog_raw_results_file.with_suffix(
+            ".csv.emapper.annotations"
+        )
         for f in files_to_remove:
             f.unlink()
         file_to_rename.rename(self.eggnog_raw_results_file)
 
     def execute_eggnog_mapper(self):
-        print(f"Executing eggNOG-mapper: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}, reference strain: {self.ref}")
+        print(
+            f"Executing eggNOG-mapper: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}, reference strain: {self.ref}"
+        )
         self.setup_directories()
         self.get_reference_fasta_file()
         self.create_eggnog_cmd()
         self.setup_directories()
         if self.debug:
             status = os.system(self.eggnog_cmd)
-            self.execute_status =status
+            self.execute_status = status
         else:
             os.system(self.eggnog_cmd)
         self.clean_unessecary_output()
 
-class eggNOGParser():
-    def __init__(self, fasta_dir: Path, core_protein_table_file_list: List[Path], out_dir: Path):
+
+class eggNOGParser:
+    def __init__(
+        self, fasta_dir: Path, core_protein_table_file_list: List[Path], out_dir: Path
+    ):
         self.fasta_dir = fasta_dir
         self.core_protein_table_file_list = core_protein_table_file_list
         self.out_dir = out_dir / "eggNOG"
-        self.eggnog_headers = ["query", "seed_ortholog", "evalue", "score", "eggNOG_OGs", "max_annot_lvl", 
-            "COG_category", "Description", "Preferred_name", "GOs", "EC", "KEGG_ko",
-            "KEGG_Pathway", "KEGG_Module", "KEGG_Reaction", "KEGG_rclass", "BRITE", "KEGG_TC",
-            "CAZy", "BiGG_Reaction", "PFAMs"
+        self.eggnog_headers = [
+            "query",
+            "seed_ortholog",
+            "evalue",
+            "score",
+            "eggNOG_OGs",
+            "max_annot_lvl",
+            "COG_category",
+            "Description",
+            "Preferred_name",
+            "GOs",
+            "EC",
+            "KEGG_ko",
+            "KEGG_Pathway",
+            "KEGG_Module",
+            "KEGG_Reaction",
+            "KEGG_rclass",
+            "BRITE",
+            "KEGG_TC",
+            "CAZy",
+            "BiGG_Reaction",
+            "PFAMs",
         ]
         self.category_annotation = {
-            "A":"RNA processing and modification",
-            "B":"Chromatin structure and dynamics",
-            "C":"Energy production and conversion",
-            "D":"Cell cycle control, cell division, chromosome partitioning",
-            "E":"Amino acid transport and metabolism",
-            "F":"Nucleotide transport and metabolism",
-            "G":"Carbohydrate transport and metabolism",
-            "H":"Coenzyme transport and metabolism",
-            "I":"Lipid transport and metabolism",
-            "J":"Translation, ribosomal structure and biogenesis",
-            "K":"Transcription",
-            "L":"Replication, recombination and repair",
-            "M":"Cell wall/membrane/envelope biogenesis",
-            "N":"Cell motility",
-            "O":"Post-translational modification, protein turnover, and chaperones",
-            "P":"Inorganic ion transport and metabolism",
-            "Q":"Secondary metabolites biosynthesis, transport, and catabolism",
-            "S":"Function unknown",
-            "T":"Signal transduction mechanisms",
-            "U":"Intracellular trafficking, secretion, and vesicular transport",
-            "V":"Defense mechanisms",
-            "W":"Extracellular structures",
-            "Z":"Cytoskeleton",
+            "A": "RNA processing and modification",
+            "B": "Chromatin structure and dynamics",
+            "C": "Energy production and conversion",
+            "D": "Cell cycle control, cell division, chromosome partitioning",
+            "E": "Amino acid transport and metabolism",
+            "F": "Nucleotide transport and metabolism",
+            "G": "Carbohydrate transport and metabolism",
+            "H": "Coenzyme transport and metabolism",
+            "I": "Lipid transport and metabolism",
+            "J": "Translation, ribosomal structure and biogenesis",
+            "K": "Transcription",
+            "L": "Replication, recombination and repair",
+            "M": "Cell wall/membrane/envelope biogenesis",
+            "N": "Cell motility",
+            "O": "Post-translational modification, protein turnover, and chaperones",
+            "P": "Inorganic ion transport and metabolism",
+            "Q": "Secondary metabolites biosynthesis, transport, and catabolism",
+            "S": "Function unknown",
+            "T": "Signal transduction mechanisms",
+            "U": "Intracellular trafficking, secretion, and vesicular transport",
+            "V": "Defense mechanisms",
+            "W": "Extracellular structures",
+            "Z": "Cytoskeleton",
         }
 
     def get_reference_fasta_file(self):
@@ -136,12 +177,12 @@ class eggNOGParser():
     def load_all_reference_proteins(self) -> dict:
         record = SeqIO.parse(str(self.fasta_file), "fasta")
         return {protein.id: ["S"] for protein in record}
-    
+
     def turn_category_to_list(self, x: str) -> list:
         if x == "-":
             return ["S"]
         return list(x)
-    
+
     def get_assigned_cog_categories(self, eggnog_results_df) -> dict:
         eggnog_results_df["COG_category"] = eggnog_results_df["COG_category"].apply(
             lambda x: self.turn_category_to_list(x)
@@ -154,9 +195,15 @@ class eggNOGParser():
         ref_data = self.load_all_reference_proteins()
         # Load eggnog annotation
         eggnog_results_f = self.out_dir / (self.ref + "_eggNOG_results.csv")
-        eggnog_results_df = pd.read_csv(eggnog_results_f, sep="\t", index_col=0, comment="#", names=self.eggnog_headers)
+        eggnog_results_df = pd.read_csv(
+            eggnog_results_f,
+            sep="\t",
+            index_col=0,
+            comment="#",
+            names=self.eggnog_headers,
+        )
         eggnog_annotation = self.get_assigned_cog_categories(eggnog_results_df)
-        # Update reference data 
+        # Update reference data
         ref_data.update(eggnog_annotation)
         self.proteome_cog = ref_data
 
@@ -166,7 +213,9 @@ class eggNOGParser():
         for col in cols:
             mask = self.core_protein_table[col] == 1
             if "fingerprint" in col:
-                proteins["fingerprints"] = self.core_protein_table.loc[mask].index.tolist()
+                proteins["fingerprints"] = self.core_protein_table.loc[
+                    mask
+                ].index.tolist()
             else:
                 proteins[col] = self.core_protein_table.loc[mask].index.tolist()
         self.protein_subsets = proteins
@@ -175,7 +224,7 @@ class eggNOGParser():
         # Initialize data
         cog_categories = {}
         for category in self.category_annotation:
-            cog_categories[category] =  {"proteome":0}
+            cog_categories[category] = {"proteome": 0}
             for protein_subset, proteins in self.protein_subsets.items():
                 cog_categories[category][protein_subset] = 0
 
@@ -187,18 +236,30 @@ class eggNOGParser():
         # Add data for each subset (core, fingerprints)
         for protein_subset, proteins in self.protein_subsets.items():
             for protein in proteins:
-                protein_categories = self.proteome_cog[protein] # WIll always exist as key
+                protein_categories = self.proteome_cog[
+                    protein
+                ]  # WIll always exist as key
                 for category in protein_categories:
                     cog_categories[category][protein_subset] += 1
 
         self.cog_categories_data = cog_categories
 
-    def perform_hypergeom_test(self, population_size: int, population_successes: int, sample_size: int, sample_successes: int) -> Tuple:
+    def perform_hypergeom_test(
+        self,
+        population_size: int,
+        population_successes: int,
+        sample_size: int,
+        sample_successes: int,
+    ) -> Tuple:
         expected = (sample_size * population_successes) / population_size
         # p-value
-        pval = hypergeom.sf(sample_successes - 1, population_size, population_successes, sample_size)
+        pval = hypergeom.sf(
+            sample_successes - 1, population_size, population_successes, sample_size
+        )
         if sample_successes < expected or sample_successes == 0:
-            pval = 1-hypergeom.sf(sample_successes, population_size, population_successes, sample_size)
+            pval = 1 - hypergeom.sf(
+                sample_successes, population_size, population_successes, sample_size
+            )
         # fold change
         ratio_population = population_successes / population_size
         ratio_sample = sample_successes / sample_size
@@ -209,22 +270,28 @@ class eggNOGParser():
 
     def compare_sets_with_hypergeometric_test(self) -> dict:
         background_set = "proteome"
-        population_size = len(self.proteome_cog.keys())# Number of proteins in proteome
+        population_size = len(
+            self.proteome_cog.keys()
+        )  # Number of proteins in proteome
         dfs = []
         for protein_set, protein_list in self.protein_subsets.items():
             data = {self.ref: {}}
             sample_size = len(protein_list)
             for category in self.cog_categories_data:
-                population_successes = self.cog_categories_data[category][background_set]
+                population_successes = self.cog_categories_data[category][
+                    background_set
+                ]
                 sample_successes = self.cog_categories_data[category][protein_set]
-                pvalue, fold_change = self.perform_hypergeom_test(population_size, population_successes, sample_size, sample_successes)
+                pvalue, fold_change = self.perform_hypergeom_test(
+                    population_size, population_successes, sample_size, sample_successes
+                )
                 data[self.ref][f"{category}_pvalue"] = pvalue
-                data[self.ref][f"{category}_fold_change"] =  fold_change
+                data[self.ref][f"{category}_fold_change"] = fold_change
                 # data[self.ref][category] = {"Annotation": self.category_annotation.get(category, "X"), "p-value": pvalue, "Fold_change": fold_change}
             df = pd.DataFrame.from_dict(data, orient="index")
             dfs.append(df)
-        return {"core": dfs[0], "fingerprint":dfs[1]}
-    
+        return {"core": dfs[0], "fingerprint": dfs[1]}
+
     def highlight_pvalue_on_output(self, row: pd.Series) -> List:
         over_rep_colour = "background-color:green"
         under_rep_colour = "background-color:red"
@@ -248,7 +315,7 @@ class eggNOGParser():
         return return_value
 
     def write_hypergeometric_dfs(self):
-        fout = self.out_dir /  "eggNOG_hypergeometric.xlsx"
+        fout = self.out_dir / "eggNOG_hypergeometric.xlsx"
         excel_writer = pd.ExcelWriter(fout)
         for protein_set, df in zip(self.protein_subsets, self.hypergeometric_dfs):
             df = df.style.apply(self.highlight_pvalue_on_output, axis=1)
@@ -269,8 +336,7 @@ class eggNOGParser():
             total_data["fingerprint"].append(tmp_data["fingerprint"])
         self.hypergeometric_dfs = [
             pd.concat(total_data["core"]),
-            pd.concat(total_data["fingerprint"])
+            pd.concat(total_data["fingerprint"]),
         ]
         print(f"Writing results: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
         self.write_hypergeometric_dfs()
-    
