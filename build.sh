@@ -1,1 +1,1 @@
-$PYTHON setup.py sdist
+$PYTHON setup.py install
