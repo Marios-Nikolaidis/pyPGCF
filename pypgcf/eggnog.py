@@ -363,3 +363,4 @@ class eggNOGParser:
             self.hypergeometric_dfs.append(pd.concat(total_data["fingerprint"]))
         print(f"Writing results: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
         self.write_hypergeometric_dfs()
+        print(f"Done: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")

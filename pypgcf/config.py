@@ -4,7 +4,7 @@
 from sys import platform as platform
 from multiprocessing import cpu_count
 
-system = platform 
+system = platform
 
 ## 1. Species demarcation configs
 species_demarcation_cores = cpu_count() - 2

@@ -8,16 +8,10 @@ package:
 source:
   git_url: "https://github.com/Marios-Nikolaidis/pyPGCF"
   git_depth: 1
-  #url: "https://github.com/Marios-Nikolaidis/{{ name }}/archive/refs/tags/{{ version }}.tar.gz"
-  #sha256: 376f50e05b60f5c6f7b8316b98490d2aa30d6363c7cbb447aa2e75b7b5ef7e4c
 
 build:
   number: 0
   noarch: python
-  # entry_points:
-  #   console_scripts:
-  #     pyPGCF = pypgcf.pyPGCF:main
-  #
 requirements:
   host:
     - pip

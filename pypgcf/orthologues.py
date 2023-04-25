@@ -2,17 +2,25 @@ import os
 import pandas as pd
 from Bio import SeqIO
 from tqdm import tqdm
-import logging
 from pathlib import Path
 import numpy as np
 from typing import Tuple, Union
 from datetime import datetime
 
-class Orthologues_identifier():
-    def __init__(self, fasta_dir: Path, out_dir: Path, ref: Union[str, None], 
-                 ref_list: Union[str, None], input_type: str,
-                 cores: int, evalue: float, dmnd_sensitivity: str,
-                 no_filter: bool):
+
+class Orthologues_identifier:
+    def __init__(
+        self,
+        fasta_dir: Path,
+        out_dir: Path,
+        ref: Union[str, None],
+        ref_list: Union[str, None],
+        input_type: str,
+        cores: int,
+        evalue: float,
+        dmnd_sensitivity: str,
+        no_filter: bool,
+    ):
         self.ref = ref
         self.ref_list = ref_list
         self.in_dir = fasta_dir.parent
@@ -22,18 +30,17 @@ class Orthologues_identifier():
         self.dmnd_sensitivity = dmnd_sensitivity
         self.fasta_files = list(fasta_dir.glob("*"))
         self.input_type = input_type
-        #self.threads = cores
+        # self.threads = cores
         self.no_filter = no_filter
 
     def _set_directories(self, ref) -> None:
         directories = [
-                self.out_dir / ref / "Blast_results",
-                self.out_dir / ref / "Best_reciprocal_hits",
-                self.out_dir / ref / "Blast_DB",
-                ]
+            self.out_dir / ref / "Blast_results",
+            self.out_dir / ref / "Best_reciprocal_hits",
+            self.out_dir / ref / "Blast_DB",
+        ]
         for directory in directories:
             directory.mkdir(exist_ok=True, parents=True)
-        
 
     def _get_blast_binaries(self) -> None:
         diamond_bin = "diamond"
@@ -49,18 +56,20 @@ class Orthologues_identifier():
         """Generic function to execute a command"""
         return os.system(cmd)
 
-    def _create_blast_db(self, ref: str, fasta_file: Path) -> Tuple[int, Path] :
+    def _create_blast_db(self, ref: str, fasta_file: Path) -> Tuple[int, Path]:
         """
         Create blast database for a fasta file
         """
         database_f = self.out_dir / ref / "Blast_DB" / fasta_file.name
-        cmd = f"{self.blast_bin} makedb --in {fasta_file} --quiet --db {database_f} --threads {self.blast_cores}" # DIAMOND
+        cmd = f"{self.blast_bin} makedb --in {fasta_file} --quiet --db {database_f} --threads {self.blast_cores}"  # DIAMOND
         if self.input_type == "nucl":
             cmd = f"{self.blast_db_bin} -in {fasta_file} -dbtype nucl -out {database_f}"
         database_f = database_f.with_suffix(".faa.dmnd")
         return self._execute_cmd(cmd), database_f
 
-    def _create_blast_cmd(self, fasta_file: Path, database_f: Path, out_file: Path) -> str:
+    def _create_blast_cmd(
+        self, fasta_file: Path, database_f: Path, out_file: Path
+    ) -> str:
         # DIAMOND case first
         added_sensitivity = " --very-sensitive"
         if self.dmnd_sensitivity == "sensitive":
@@ -88,7 +97,7 @@ class Orthologues_identifier():
             list_in.close()
         self._get_blast_binaries()
 
-    def reciprocal_blast(self, ref:str):
+    def reciprocal_blast(self, ref: str):
         """ """
         # Create the refseq blast database
         ref_fasta = None
@@ -100,21 +109,33 @@ class Orthologues_identifier():
 
         _, ref_db = self._create_blast_db(ref, ref_fasta)
 
-        for fasta_file in tqdm(self.fasta_files, ascii=True, leave=True, desc="Performing reciprocal BLAST"):
+        for fasta_file in tqdm(
+            self.fasta_files, ascii=True, leave=True, desc="Performing reciprocal BLAST"
+        ):
             if ref == fasta_file.stem:
                 continue
             # Create the blast database for the fasta file
             _, database_f = self._create_blast_db(ref, fasta_file)
             # Perform the blast one way
-            fout_f = self.out_dir / ref / "Blast_results" / (fasta_file.name + "_vs_reference.txt")
-            fout_r = self.out_dir / ref / "Blast_results" / (fasta_file.name + "_vs_reference_reverse.txt")
+            fout_f = (
+                self.out_dir
+                / ref
+                / "Blast_results"
+                / (fasta_file.name + "_vs_reference.txt")
+            )
+            fout_r = (
+                self.out_dir
+                / ref
+                / "Blast_results"
+                / (fasta_file.name + "_vs_reference_reverse.txt")
+            )
             forward_blast = self._create_blast_cmd(ref_fasta, database_f, fout_f)
             reverse_blast = self._create_blast_cmd(fasta_file, ref_db, fout_r)
             self._execute_cmd(forward_blast)
             self._execute_cmd(reverse_blast)
         return ref_fasta
 
-    def parse_blast_results(self, ref:str):
+    def parse_blast_results(self, ref: str):
         """
         Reads the txt blast output and create the reciprocal table
         First read the files and filter the redundant information for each protein hit, keep the best hit
@@ -123,6 +144,7 @@ class Orthologues_identifier():
         Output: Best reciprocal hits per strain
         Return: None
         """
+
         def _get_best_subject(df: pd.DataFrame) -> pd.DataFrame:
             """
             Helper function to keep the best subject hit per query
@@ -134,61 +156,96 @@ class Orthologues_identifier():
             for _, grp_df in df.groupby(first_col):
                 indeces_to_keep.append(grp_df["Bitscore"].idxmax())
             return df.loc[indeces_to_keep].reset_index(drop=True)
-    
+
         def _orthologue_filter(df: pd.DataFrame) -> pd.DataFrame:
             """
             Helper function to create the distribution of percent identities for all the genes in the data frame
             Filter the hits that have perc. identity lower than -2 SD
             """
-            pid_std  = df.Pident.values.std(axis=0)
+            pid_std = df.Pident.values.std(axis=0)
             pid_mean = df.Pident.values.mean(axis=0)
             drop_condition = pid_mean - (2 * pid_std)
             return df.drop(df[df.Pident < drop_condition].index)
-    
+
         def _create_reciprocal_matrix(ref_vs_query_df, query_vs_ref_df):
             """
-            Helper function which compare the two dataframes given line by line 
+            Helper function which compare the two dataframes given line by line
             to identify reciprocal hits
             Input: The one way and the reverse way dataframe
             Return a new data frame which contains only the reciprocal hits
             """
             tmp_df = pd.merge(ref_vs_query_df, query_vs_ref_df, on="RefSeq")
             df = tmp_df.drop(tmp_df[tmp_df.QuerySeq_x != tmp_df.QuerySeq_y].index)
-            case1 = df[df['Pident_x'] >= df['Pident_y']]
-            case1 = case1[['RefSeq', 'QuerySeq_x', 'Pident_x', 'Evalue_x', "Bitscore_x"]]
-            case1 = case1.rename(columns={'QuerySeq_x':'QuerySeq', 'Pident_x':'Pident', 'Evalue_x':'Evalue', 'Bitscore_x': 'Bitscore'})
-            case2 = df[df['Pident_x'] < df['Pident_y']]
-            case2 = case2.rename(columns={'QuerySeq_y':'QuerySeq', 'Pident_y':'Pident', 'Evalue_y':'Evalue', 'Bitscore_y': 'Bitscore'})
-            df = pd.concat([case1,case2])
-            return df[['RefSeq', 'QuerySeq', 'Pident']]
-    
-        logging.debug("Parsing BLAST results")
+            case1 = df[df["Pident_x"] >= df["Pident_y"]]
+            case1 = case1[
+                ["RefSeq", "QuerySeq_x", "Pident_x", "Evalue_x", "Bitscore_x"]
+            ]
+            case1 = case1.rename(
+                columns={
+                    "QuerySeq_x": "QuerySeq",
+                    "Pident_x": "Pident",
+                    "Evalue_x": "Evalue",
+                    "Bitscore_x": "Bitscore",
+                }
+            )
+            case2 = df[df["Pident_x"] < df["Pident_y"]]
+            case2 = case2.rename(
+                columns={
+                    "QuerySeq_y": "QuerySeq",
+                    "Pident_y": "Pident",
+                    "Evalue_y": "Evalue",
+                    "Bitscore_y": "Bitscore",
+                }
+            )
+            df = pd.concat([case1, case2])
+            return df[["RefSeq", "QuerySeq", "Pident"]]
+
         fasta_files = self.fasta_files
-        for fasta_file in tqdm(fasta_files, ascii=True, leave=True, desc="Parsing BLAST output"):
+        for fasta_file in tqdm(
+            fasta_files, ascii=True, leave=True, desc="Parsing BLAST output"
+        ):
             if ref in fasta_file.stem:
                 continue
-            ref_vs_query_file = self.out_dir / ref / "Blast_results" / (fasta_file.name + "_vs_reference.txt")
-            query_vs_ref_file = self.out_dir / ref / "Blast_results" / (fasta_file.name + "_vs_reference_reverse.txt")
-    
+            ref_vs_query_file = (
+                self.out_dir
+                / ref
+                / "Blast_results"
+                / (fasta_file.name + "_vs_reference.txt")
+            )
+            query_vs_ref_file = (
+                self.out_dir
+                / ref
+                / "Blast_results"
+                / (fasta_file.name + "_vs_reference_reverse.txt")
+            )
+
             c1 = ["RefSeq", "QuerySeq", "Pident", "Evalue", "Bitscore"]
             c2 = ["QuerySeq", "RefSeq", "Pident", "Evalue", "Bitscore"]
-            
-            ref_vs_query_df = pd.read_csv(ref_vs_query_file,  sep="\t", names=c1, usecols=[0, 1, 2, 10, 11] )
-            query_vs_ref_df = pd.read_csv(query_vs_ref_file,  sep="\t", names=c2, usecols=[0, 1, 2, 10, 11] )
-            
+
+            ref_vs_query_df = pd.read_csv(
+                ref_vs_query_file, sep="\t", names=c1, usecols=[0, 1, 2, 10, 11]
+            )
+            query_vs_ref_df = pd.read_csv(
+                query_vs_ref_file, sep="\t", names=c2, usecols=[0, 1, 2, 10, 11]
+            )
+
             # Blast output
             # qaccver saccver pident length mismatch gapopen qstart qend sstart send evalue bitscore
             ref_vs_query_df = _get_best_subject(ref_vs_query_df)
             query_vs_ref_df = _get_best_subject(query_vs_ref_df)
-            
+
             reciprocal_df = _create_reciprocal_matrix(ref_vs_query_df, query_vs_ref_df)
-            if not self.no_filter: # No_filtering is false
+            if not self.no_filter:  # No_filtering is false
                 reciprocal_df = _orthologue_filter(reciprocal_df)
             # Create reciprocal files with headers
-            rec_fout = self.out_dir / ref / "Best_reciprocal_hits" / (fasta_file.stem + "_BRH.txt")
-            reciprocal_df.to_csv(rec_fout, sep='\t', index=False)
-        logging.debug("Finished parsing results")
-    
+            rec_fout = (
+                self.out_dir
+                / ref
+                / "Best_reciprocal_hits"
+                / (fasta_file.stem + "_BRH.txt")
+            )
+            reciprocal_df.to_csv(rec_fout, sep="\t", index=False)
+
     def create_orthology_matrix(self, ref, ref_fasta):
         """
         Create the initial cog matrix with empty (NaN) vectors and replace with the true values
@@ -199,7 +256,7 @@ class Orthologues_identifier():
         # TODO: Writing the files and then reopening them seems kind of waste of resources
         reciprocal_f_dir = self.out_dir / ref / "Best_reciprocal_hits"
         reciprocal_files = list(reciprocal_f_dir.glob("*"))
-    
+
         def _init_orthology_matrix(refgenes, reciprocal_files):
             orthology_matrix_dict = {gene.id: {} for gene in refgenes}
             for reciprocal_file in reciprocal_files:
@@ -207,7 +264,7 @@ class Orthologues_identifier():
                 for gene in orthology_matrix_dict:
                     orthology_matrix_dict[gene][query_genome] = np.nan
             return orthology_matrix_dict
-    
+
         def _expand_orthology_matrix(init_orthology_matrix_dict, reciprocal_files):
             """
             Replace the NaN values in the Pandas dataframe with the corresponding values
@@ -218,18 +275,24 @@ class Orthologues_identifier():
                 header = True
                 for lines in open(reciprocal_file, mode="r"):
                     if header:
-                        header=False
+                        header = False
                         continue
                     refseq, queryseq, *_ = lines.rstrip().split("\t")
                     init_orthology_matrix_dict[refseq][query_genome] = queryseq
-            init_orthology_matrix = pd.DataFrame.from_dict(init_orthology_matrix_dict, orient="index")
+            init_orthology_matrix = pd.DataFrame.from_dict(
+                init_orthology_matrix_dict, orient="index"
+            )
             init_orthology_matrix.index.name = ref
             return init_orthology_matrix
-    
+
         init_orthology_matrix = _init_orthology_matrix(refgenes, reciprocal_files)
-        orthology_matrix_df = _expand_orthology_matrix(init_orthology_matrix, reciprocal_files)
+        orthology_matrix_df = _expand_orthology_matrix(
+            init_orthology_matrix, reciprocal_files
+        )
         orthology_matrix_f = self.out_dir / ref / "OGmatrix.csv"
-        orthology_matrix_df.to_csv(orthology_matrix_f, sep = '\t', na_rep="X") # Contains all the COGs
+        orthology_matrix_df.to_csv(
+            orthology_matrix_f, sep="\t", na_rep="X"
+        )  # Contains all the COGs
 
     def clean_blastdb_dir(self, ref):
         database_dir = self.out_dir / ref / "Blast_DB"
@@ -252,12 +315,14 @@ class Orthologues_identifier():
         for idx, ref in enumerate(refs):
             if idx > 0:
                 print("-" * 200)
-            print(f"Calulating orthologues with reference {ref}: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
+            print(
+                f"Calulating orthologues with reference {ref}: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}"
+            )
             ref_fasta = self.reciprocal_blast(ref)
             self.parse_blast_results(ref)
             self.clean_blastdb_dir(ref)
-            print("Creating orthology matrix")
-            print(f"Creating orthology matrix: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
+            print(
+                f"Creating orthology matrix: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}"
+            )
             self.create_orthology_matrix(ref, ref_fasta)
             print(f"Done: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
-

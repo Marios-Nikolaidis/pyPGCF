@@ -6,9 +6,11 @@ import pandas as pd
 from tqdm import tqdm
 from multiprocessing import cpu_count
 from math import ceil as math_ceil
+from datetime import datetime
 
-class smBGCInstaller():
-    def __init__(self, debug: bool=False):
+
+class smBGCInstaller:
+    def __init__(self, debug: bool = False):
         self.debug = debug
 
     def install_databases(self):
@@ -16,8 +18,16 @@ class smBGCInstaller():
         cmd = "download-antismash-databases"
         os.system(cmd)
 
-class smBGCLocalRunner():
-    def __init__(self, genome_fasta_dir: Path, out_dir: Path, cores: int, strictness: str, genefinding_tool: str):
+
+class smBGCLocalRunner:
+    def __init__(
+        self,
+        genome_fasta_dir: Path,
+        out_dir: Path,
+        cores: int,
+        strictness: str,
+        genefinding_tool: str,
+    ):
         self.genome_fasta_dir = genome_fasta_dir
         self.antismash_raw_results_dir = out_dir / "smBGC" / "antismash_raw_results"
         self.cores = cores
@@ -25,15 +35,17 @@ class smBGCLocalRunner():
         self.genefinding_tool = genefinding_tool
 
     def create_antismash_cmd(self, genome_fasta_file: Path, genome_out_dir: Path):
-        cmd = " ".join([
-            "antismash",
-            f"--output-dir {genome_out_dir}",
-            f"--cpu {self.cores}",
-            f"--hmmdetection-strictness {self.strictness}",
-            f"--genefinding-tool {self.genefinding_tool}",
-            "--cb-knownclusters",
-            f"{genome_fasta_file.absolute()}",
-            ])
+        cmd = " ".join(
+            [
+                "antismash",
+                f"--output-dir {genome_out_dir}",
+                f"--cpu {self.cores}",
+                f"--hmmdetection-strictness {self.strictness}",
+                f"--genefinding-tool {self.genefinding_tool}",
+                "--cb-knownclusters",
+                f"{genome_fasta_file.absolute()}",
+            ]
+        )
         os.system(cmd)
 
     def analyze_genomes(self):
@@ -49,10 +61,20 @@ class smBGCLocalRunner():
             genome_out_dirs.append(genome_out_dir)
             genome_out_dir.mkdir(exist_ok=True, parents=True)
         with ProcessPoolExecutor(maximum_number_of_available_jobs) as executor:
-            list(tqdm(executor.map(self.create_antismash_cmd, genome_files, genome_out_dirs), 
-                       desc="Running antiSMASH", ascii=True, leave=True, total=len(genome_files)))
+            list(
+                tqdm(
+                    executor.map(
+                        self.create_antismash_cmd, genome_files, genome_out_dirs
+                    ),
+                    desc="Running antiSMASH",
+                    ascii=True,
+                    leave=True,
+                    total=len(genome_files),
+                )
+            )
 
-class smBGCParser():
+
+class smBGCParser:
     def __init__(self, out_dir: Path, cores: int):
         self.out_dir = out_dir / "smBGC"
         self.antismash_raw_result_dir = self.out_dir / "antismash_raw_results"
@@ -68,7 +90,9 @@ class smBGCParser():
         return json.loads(json_str)
 
     def get_known_cluster_results(self, seq_obj):
-        clusterblast_res = seq_obj["modules"]["antismash.modules.clusterblast"]["knowncluster"]["results"]
+        clusterblast_res = seq_obj["modules"]["antismash.modules.clusterblast"][
+            "knowncluster"
+        ]["results"]
         return clusterblast_res
 
     def has_identified_smbgcs(self, identified_smbgcs: list) -> bool:
@@ -78,7 +102,7 @@ class smBGCParser():
 
     def parse_strain_results(self, strain_subdir: Path) -> pd.DataFrame:
         genome = strain_subdir.name
-        json_f  = strain_subdir / (genome + ".json")
+        json_f = strain_subdir / (genome + ".json")
         json_str = self.load_json(str(json_f))
         data = []
         for seq_obj in json_str["records"]:
@@ -94,26 +118,35 @@ class smBGCParser():
                 region_e = area["end"]
                 region_p = ";".join(area["products"])
                 # known cluster blast results
-                if known_cluster_results is None or len(known_cluster_results[idx]["ranking"]) == 0:
+                if (
+                    known_cluster_results is None
+                    or len(known_cluster_results[idx]["ranking"]) == 0
+                ):
                     num_hits = 0
                     description = "X"
                     database_total_genes = 0
                     perc_identity = 0
                 else:
                     num_hits = known_cluster_results[idx]["ranking"][0][1]["hits"]
-                    database_total_genes = len(known_cluster_results[idx]["ranking"][0][0]["proteins"])
-                    perc_identity = round(num_hits/database_total_genes * 100, 0)
-                    if perc_identity > 100: # There may be a gene duplicate in the query smBGC
+                    database_total_genes = len(
+                        known_cluster_results[idx]["ranking"][0][0]["proteins"]
+                    )
+                    perc_identity = round(num_hits / database_total_genes * 100, 0)
+                    if (
+                        perc_identity > 100
+                    ):  # There may be a gene duplicate in the query smBGC
                         perc_identity = 100
-                    description = known_cluster_results[idx]["ranking"][0][0]["description"]
+                    description = known_cluster_results[idx]["ranking"][0][0][
+                        "description"
+                    ]
                 tmp_data = {
-                        "Genome": genome,
-                        "Region": region_id,
-                        "Region_start": region_s,
-                        "Region_end": region_e,
-                        "Products": region_p,
-                        "Most_similar_known_cluster": description,
-                        "Perc._similarity": perc_identity,
+                    "Genome": genome,
+                    "Region": region_id,
+                    "Region_start": region_s,
+                    "Region_end": region_e,
+                    "Products": region_p,
+                    "Most_similar_known_cluster": description,
+                    "Perc._similarity": perc_identity,
                 }
                 data.append(tmp_data)
         return pd.DataFrame(data)
@@ -126,8 +159,14 @@ class smBGCParser():
     def gather_results(self):
         total_data = []
         with ProcessPoolExecutor(self.parsing_cores) as executor:
-            for dataframe in tqdm(executor.map(self.parse_strain_results, self.antismash_subdirs), total=len(self.antismash_subdirs), desc="Parsing antiSMASH results", ascii=True, leave=True):
+            for dataframe in tqdm(
+                executor.map(self.parse_strain_results, self.antismash_subdirs),
+                total=len(self.antismash_subdirs),
+                desc="Parsing antiSMASH results",
+                ascii=True,
+                leave=True,
+            ):
                 total_data.append(dataframe)
         self.final_df = pd.concat(total_data)
         self.write_antismash_results()
-
+        print(f"Done: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")

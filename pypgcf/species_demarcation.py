@@ -1,14 +1,24 @@
 import os
 import numpy as np
-import logging
 import csv
 import pandas as pd
-from tqdm import tqdm
+from datetime import datetime
 from pathlib import Path
 from typing import Union, Generator, List
 
-class SpeciesDemarcator():
-    def __init__(self,  in_dir: Path, out_dir: Path, fastani_cores:int, kmer:int, fraglen:int, minfrac:float, inflation:int, mcl_cores:int):
+
+class SpeciesDemarcator:
+    def __init__(
+        self,
+        in_dir: Path,
+        out_dir: Path,
+        fastani_cores: int,
+        kmer: int,
+        fraglen: int,
+        minfrac: float,
+        inflation: int,
+        mcl_cores: int,
+    ):
         self.in_dir = in_dir
         self.out_dir = out_dir / "Species_demarcation"
         self.fastani_cores = fastani_cores
@@ -21,17 +31,27 @@ class SpeciesDemarcator():
     def create_directories(self):
         self.out_dir.mkdir(exist_ok=True, parents=True)
 
-    def create_input_for_fastani(self, files_for_fastani: Union[List, Generator], tmp_file_for_fastani: Path) -> None:
+    def create_input_for_fastani(
+        self, files_for_fastani: Union[List, Generator], tmp_file_for_fastani: Path
+    ) -> None:
         print("Preparing FastANI input")
         with open(str(tmp_file_for_fastani), "w") as f:
             for file in files_for_fastani:
                 f.write(str(file) + "\n")
-    
+
     def perform_fastani(self, org_list: Path, fout: Path) -> None:
-        print("Performing FastANI...")
-        cmd = "fastANI --ql {} --rl {} -t {} -k {} --fragLen {} --minFraction {} -o {} > /dev/null 2>&1".format(org_list, org_list, self.fastani_cores, self.kmer, self.fraglen, self.minfrac, fout)
+        print(f"Performing FastANI: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
+        cmd = "fastANI --ql {} --rl {} -t {} -k {} --fragLen {} --minFraction {} -o {} > /dev/null 2>&1".format(
+            org_list,
+            org_list,
+            self.fastani_cores,
+            self.kmer,
+            self.fraglen,
+            self.minfrac,
+            fout,
+        )
         os.system(cmd)
-    
+
     def prepare_input_for_mcl(self, input_file: Path) -> Path:
         """
         This script prepares the input file for fastANI.
@@ -44,21 +64,31 @@ class SpeciesDemarcator():
         fout = input_file.parent / "fastANI_for_mcl.txt"
         df.to_csv(fout, sep="\t", header=False)
         return fout
-    
+
     def run_mcl(self, fastani_for_mcl: Path) -> Path:
         # Make each one a system call
-        print("Running MCL clustering")
+        print(
+            f"Running MCL clustering: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}"
+        )
         outdir = fastani_for_mcl.parent
-        os.system(f"mcxload -abc {fastani_for_mcl} -o {outdir}/fastANI_mcx_mtrx.txt -write-tab {outdir}/fastANI_annot.tab > /dev/null 2>&1")
-        os.system(f"mcl {outdir}/fastANI_mcx_mtrx.txt -te {self.mcl_cores} -I {self.inflation} -o {outdir}/fastANI_mcl_out.txt > /dev/null 2>&1")
-        os.system(f"mcxdump -icl {outdir}/fastANI_mcl_out.txt -tabr {outdir}/fastANI_annot.tab -o {outdir}/fastANI_mcx_dump.txt > /dev/null 2>&1")
-        os.system(f"rm {outdir}/fastANI_for_mcl.txt {outdir}/fastANI_mcx_mtrx.txt {outdir}/fastANI_annot.tab {outdir}/fastANI_mcl_out.txt {outdir}/FastANI_input.txt")
+        os.system(
+            f"mcxload -abc {fastani_for_mcl} -o {outdir}/fastANI_mcx_mtrx.txt -write-tab {outdir}/fastANI_annot.tab > /dev/null 2>&1"
+        )
+        os.system(
+            f"mcl {outdir}/fastANI_mcx_mtrx.txt -te {self.mcl_cores} -I {self.inflation} -o {outdir}/fastANI_mcl_out.txt > /dev/null 2>&1"
+        )
+        os.system(
+            f"mcxdump -icl {outdir}/fastANI_mcl_out.txt -tabr {outdir}/fastANI_annot.tab -o {outdir}/fastANI_mcx_dump.txt > /dev/null 2>&1"
+        )
+        os.system(
+            f"rm {outdir}/fastANI_for_mcl.txt {outdir}/fastANI_mcx_mtrx.txt {outdir}/fastANI_annot.tab {outdir}/fastANI_mcl_out.txt {outdir}/FastANI_input.txt"
+        )
         os.system(f"mv {outdir}/fastANI_mcx_dump.txt {outdir}/fastANI_clusters.tsv")
         print("Done")
-        return outdir/"fastANI_clusters.tsv"
-    
+        return outdir / "fastANI_clusters.tsv"
+
     def parse_mcx_output(self, fastani_from_mcl: Path) -> None:
-        print("Parsing MCL output")
+        print(f"Parsing MCL output: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
         outdir = fastani_from_mcl.parent
         results = {}
         clust_num = 0
@@ -75,7 +105,7 @@ class SpeciesDemarcator():
         fastani_from_mcl.unlink()
         fout = outdir / "FastANI_species_clusters.xlsx"
         df.to_excel(fout)
-    
+
     def assign_species(self):
         # Check if input is file or directory
         self.create_directories()
@@ -87,4 +117,4 @@ class SpeciesDemarcator():
         fastani_for_mcl = self.prepare_input_for_mcl(fastani_out)
         fastani_from_mcl = self.run_mcl(fastani_for_mcl)
         self.parse_mcx_output(fastani_from_mcl)
-        print("Done")
+        print(f"Done: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
