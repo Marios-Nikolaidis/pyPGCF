@@ -5,7 +5,10 @@ from tqdm import tqdm
 import logging
 from pathlib import Path
 import numpy as np
-from typing import Tuple, Union
+from typing import Union
+from multiprocessing import cpu_count
+from math import floor
+from concurrent.futures import ProcessPoolExecutor
 
 
 class Orthologues_identifier:
@@ -30,23 +33,22 @@ class Orthologues_identifier:
         self.dmnd_sensitivity = dmnd_sensitivity
         self.fasta_files = list(fasta_dir.glob("*"))
         self.input_type = input_type
-        # self.threads = cores
         self.no_filter = no_filter
+        self.blast_db_dir = out_dir / "Blast_DB"
+        self.concurrent_jobs = floor((cpu_count() - 2) / cores)
+        if self.concurrent_jobs == 0:
+            self.concurrent_jobs = 1
 
     def _set_directories(self, ref) -> None:
         directories = [
             self.out_dir / ref / "Blast_results",
             self.out_dir / ref / "Best_reciprocal_hits",
-            self.out_dir / ref / "Blast_DB",
+            self.blast_db_dir,
         ]
         for directory in directories:
             directory.mkdir(exist_ok=True, parents=True)
 
     def _get_blast_binaries(self) -> None:
-        # resources_dir = Path('../../resources/')
-        # makeblastdb_bin = Path(__file__).parent/resources_dir/"makeblastdb" #/ .replace(os.path.basename(__file__) + "/", "")
-        # blastn_bin = Path(__file__).parent/resources_dir/"blastn" #/ .replace(os.path.basename(__file__) + "/", "")
-        # diamond_bin = Path(__file__).parent/resources_dir/"diamond" #/ .replace(os.path.basename(__file__) + "/", "")
         diamond_bin = "diamond"
         blastn_bin = "blastn"
         makeblastdb_bin = "makeblastdb"
@@ -60,16 +62,18 @@ class Orthologues_identifier:
         """Generic function to execute a command"""
         return os.system(cmd)
 
-    def _create_blast_db(self, ref: str, fasta_file: Path) -> Tuple[int, Path]:
+    def create_blast_db(self):
         """
         Create blast database for a fasta file
         """
-        database_f = self.out_dir / ref / "Blast_DB" / fasta_file.name
-        cmd = f"{self.blast_bin} makedb --in {fasta_file} --quiet --db {database_f} --threads {self.blast_cores}"  # DIAMOND
-        if self.input_type == "nucl":
-            cmd = f"{self.blast_db_bin} -in {fasta_file} -dbtype nucl -out {database_f}"
-        database_f = database_f.with_suffix(".faa.dmnd")
-        return self._execute_cmd(cmd), database_f
+        for fasta_file in tqdm(
+            self.fasta_files, desc="Preparing DIAMOND/BLAST database"
+        ):
+            database_f = self.blast_db_dir / fasta_file.stem
+            cmd = f"{self.blast_bin} makedb --in {fasta_file} --quiet --db {database_f} --threads {self.blast_cores}"  # DIAMOND
+            if self.input_type == "nucl":
+                cmd = f"{self.blast_db_bin} -in {fasta_file} -dbtype nucl -out {database_f}"
+            self._execute_cmd(cmd)
 
     def _create_blast_cmd(
         self, fasta_file: Path, database_f: Path, out_file: Path
@@ -101,9 +105,9 @@ class Orthologues_identifier:
             list_in.close()
         self._get_blast_binaries()
 
-    def reciprocal_blast(self, ref: str):
+    def perform_reciprocal_blast(self, ref: str):
         """ """
-        # Create the refseq blast database
+        # Check if the ref file exists
         ref_fasta = None
         for fasta_file in self.fasta_files:
             if ref in fasta_file.name:
@@ -111,16 +115,14 @@ class Orthologues_identifier:
         if ref_fasta == None:
             raise FileNotFoundError(f"{ref} is not in input fasta file names")
 
-        _, ref_db = self._create_blast_db(ref, ref_fasta)
+        ref_db = self.blast_db_dir / ref
 
-        for fasta_file in tqdm(
-            self.fasta_files, ascii=True, leave=True, desc="Performing reciprocal BLAST"
-        ):
+        cmds = []
+        for fasta_file in self.fasta_files:
             if ref == fasta_file.stem:
                 continue
-            # Create the blast database for the fasta file
-            _, database_f = self._create_blast_db(ref, fasta_file)
-            # Perform the blast one way
+            database_f = self.blast_db_dir / fasta_file.stem
+
             fout_f = (
                 self.out_dir
                 / ref
@@ -135,8 +137,18 @@ class Orthologues_identifier:
             )
             forward_blast = self._create_blast_cmd(ref_fasta, database_f, fout_f)
             reverse_blast = self._create_blast_cmd(fasta_file, ref_db, fout_r)
-            self._execute_cmd(forward_blast)
-            self._execute_cmd(reverse_blast)
+            cmds.append(forward_blast)
+            cmds.append(reverse_blast)
+
+        with ProcessPoolExecutor(self.concurrent_jobs) as executor:
+            list(
+                tqdm(
+                    executor.map(self._execute_cmd, cmds),
+                    desc="Performing reciprocal DIAMOND/BLAST",
+                    ascii=True,
+                    leave=True,
+                )
+            )
         return ref_fasta
 
     def parse_blast_results(self, ref: str):
@@ -302,6 +314,11 @@ class Orthologues_identifier:
             orthology_matrix_f, sep="\t", na_rep="X"
         )  # Contains all the COGs
 
+    def clean_database(self):
+        for file in self.blast_db_dir.glob("*"):
+            file.unlink()
+        self.blast_db_dir.rmdir()
+
     def calculate_orthologues(self):
         refs = []
         self.setup()
@@ -314,12 +331,14 @@ class Orthologues_identifier:
                 ref = ref.rstrip()
                 refs.append(ref)
             list_in.close()
+        self.create_blast_db()
         for idx, ref in enumerate(refs):
             if idx > 0:
-                print("-" * 200)
+                print("-" * 210)
             print(f"Reference strain: {ref}")
-            ref_fasta = self.reciprocal_blast(ref)
+            ref_fasta = self.perform_reciprocal_blast(ref)
             self.parse_blast_results(ref)
             print("Creating orthology matrix")
             self.create_orthology_matrix(ref, ref_fasta)
             print("Done")
+        self.clean_database()
