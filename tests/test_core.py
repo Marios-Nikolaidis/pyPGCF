@@ -1,11 +1,9 @@
 from pathlib import Path
-
 import pandas as pd
 import unittest
 import sys
+from pypgcf import core
 
-sys.path.append("../core")
-from core import Core_identifier
 
 class TestModule(unittest.TestCase):
     def test_split_genomes_into_groups(self):
@@ -31,13 +29,17 @@ class TestModule(unittest.TestCase):
         instance = Core_identifier(og_matrix, species_file, core_perc, out_dir)
         instance.split_genomes_into_groups()
         presence_df = instance.calculate_protein_presence()
-        num_core = len(presence_df[presence_df["Group orthologues %"] == 100].index.tolist())
+        num_core = len(
+            presence_df[presence_df["Group orthologues %"] == 100].index.tolist()
+        )
         self.assertEqual(num_core, 4073)
         specific_prot = "NP_387886.2"
         print(instance.orthology_df.loc[specific_prot])
         print(instance.group_orgs)
         specific_prot_presence = presence_df.loc[specific_prot, "Group orthologues %"]
-        specific_prot_presence_outside = presence_df.loc[specific_prot, "Non group orthologues %"]
+        specific_prot_presence_outside = presence_df.loc[
+            specific_prot, "Non group orthologues %"
+        ]
         print(presence_df.loc[specific_prot])
         self.assertEqual(specific_prot_presence, 100)
         self.assertEqual(specific_prot_presence_outside, 0)
@@ -62,4 +64,3 @@ class TestModule(unittest.TestCase):
     #     for core_perc in core_percents:
     #         instance = Core_identifier(og_matrix, species_file, core_perc, out_dir)
     #         instance.calculate_core()
-

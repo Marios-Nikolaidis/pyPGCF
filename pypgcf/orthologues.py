@@ -87,10 +87,10 @@ class Orthologues_identifier:
             added_sensitivity = " --more-sensitive"
         if self.dmnd_sensitivity == "ultra_sensitive":
             added_sensitivity = " --ultra-sensitive"
-        cmd = f"{self.blast_bin} blastp --query {fasta_file} --quiet --db {database_f} --outfmt 6 --out {out_file} --evalue {self.blast_evalue} --threads {self.blast_cores}"
+        cmd = f"{self.blast_bin} blastp --query {fasta_file} --quiet --db {database_f} --outfmt 6 --out {out_file} --evalue {self.blast_evalue} --threads {self.blast_cores} "
         cmd += added_sensitivity
         if self.input_type == "nucl":
-            cmd = f"{self.blast_bin} -query {fasta_file} -db {database_f} -outfmt 6 -out {out_file} -evalue {self.blast_evalue} -num_threads {self.blast_cores}"
+            cmd = f"{self.blast_bin} -query {fasta_file} -db {database_f} -outfmt 6 -out {out_file} -evalue {self.blast_evalue} -num_threads {self.blast_cores} "
         return cmd
 
     def setup(self) -> None:
