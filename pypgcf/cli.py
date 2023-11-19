@@ -180,6 +180,7 @@ def main():
     )
     eggnog.add_argument("-fasta_dir", metavar="fasta_dir", help="Input fasta directory")
     eggnog.add_argument("-o", metavar="o", help="Output directory")
+    eggnog.add_argument("--debug", help="Print debug information", action='store_true')
     # eggnog.add_argument("--eggnog_results", metavar="file", help="Pre-computed eggnog results")
     eggnog_mapper = eggnog.add_argument_group("eggNOG mapper options")
     eggnog_mapper.add_argument(
@@ -259,7 +260,7 @@ def main():
             inflation,
             mcl_cores,
         )
-        demarcator.assign_species()  # Need to fix this
+        demarcator.assign_species()  # TODO: Need to fix this
 
     if args["module"] == "orthologues":
         fasta_in_dir = Path(args["in"])
@@ -354,10 +355,13 @@ def main():
         core_proteins_file_list = [
             Path(core_proteins_file) for core_proteins_file in core_proteins_file_list
         ]
+        debug = False
+        if args["debug"]:
+            debug = True
         for core_proteins_file in core_proteins_file_list:
             core_proteins_file = Path(core_proteins_file)
             runner = eggNOGRunner(
-                fasta_dir, core_proteins_file, out_dir, cores, pident, qcov, scov
+                fasta_dir, core_proteins_file, out_dir, cores, pident, qcov, scov, debug=debug
             )
             runner.execute_eggnog_mapper()
         parser = eggNOGParser(fasta_dir, core_proteins_file_list, out_dir)
