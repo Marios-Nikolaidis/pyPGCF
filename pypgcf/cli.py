@@ -6,12 +6,12 @@ email: marionik23@gmail.com
 import argparse
 import config
 from pathlib import Path
-from .species_demarcation import SpeciesDemarcator
-from .orthologues import Orthologues_identifier
-from .core import Core_identifier
-from .phylogenomic import Phylogenomic
-from .eggnog import eggNOGRunner, eggNOGParser, eggNOGInstaller
-from .smbgc import smBGCLocalRunner, smBGCParser, smBGCInstaller
+from species_demarcation import SpeciesDemarcator
+from orthologues import Orthologues_identifier
+from core import Core_identifier
+from phylogenomic import Phylogenomic
+from eggnog import eggNOGRunner, eggNOGParser, eggNOGInstaller
+from smbgc import smBGCLocalRunner, smBGCParser, smBGCInstaller
 import checks
 from tqdm import tqdm
 
