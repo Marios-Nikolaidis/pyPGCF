@@ -4,7 +4,7 @@ Git: https://github.com/Marios-Nikolaidis
 email: marionik23@gmail.com
 """
 import argparse
-from . import config
+import config
 from pathlib import Path
 from .species_demarcation import SpeciesDemarcator
 from .orthologues import Orthologues_identifier
@@ -12,7 +12,7 @@ from .core import Core_identifier
 from .phylogenomic import Phylogenomic
 from .eggnog import eggNOGRunner, eggNOGParser, eggNOGInstaller
 from .smbgc import smBGCLocalRunner, smBGCParser, smBGCInstaller
-
+import checks
 
 def main():
     parser = argparse.ArgumentParser(
@@ -243,6 +243,12 @@ def main():
     args = vars(parser.parse_args())
     if args["module"] == "species_demarcation":
         in_dir = Path(args["in"])
+        if not checks.check_if_dir_exists(in_dir):
+            print(f"{in_dir} does not exist")
+            return
+        if checks.check_if_dir_is_empty(in_dir):
+            print(f"{in_dir} is empty")
+            return
         out_dir = Path(args["o"])
         fastani_cores = args["fastani_cores"]
         kmer = args["kmer"]
@@ -264,6 +270,12 @@ def main():
 
     if args["module"] == "orthologues":
         fasta_in_dir = Path(args["in"])
+        if not checks.check_if_dir_exists(fasta_in_dir):
+            print(f"{fasta_in_dir} does not exist")
+            return
+        if checks.check_if_dir_is_empty(fasta_in_dir):
+            print(f"{fasta_in_dir} is empty")
+            return
         out_dir = Path(args["o"])
         ref = args["ref"]
         ref_list = args["ref_list"]
@@ -310,6 +322,12 @@ def main():
 
     if args["module"] == "phylogenomic":
         fasta_dir = Path(args["fasta_dir"])
+        if not checks.check_if_dir_exists(fasta_dir):
+            print(f"{fasta_dir} does not exist")
+            return
+        if checks.check_if_dir_is_empty(fasta_dir):
+            print(f"{fasta_dir} is empty")
+            return
         og_matrix_in = Path(args["in"])
         out_dir = Path(args["o"])
         cores = args["cores"]
@@ -335,6 +353,12 @@ def main():
             print(f"-o is needed")
             return
         fasta_dir = Path(fasta_dir)
+        if not checks.check_if_dir_exists(fasta_dir):
+            print(f"{fasta_dir} does not exist")
+            return
+        if checks.check_if_dir_is_empty(fasta_dir):
+            print(f"{fasta_dir} is empty")
+            return
         out_dir = Path(out_dir)
         cores = args["cores"]
         pident = args["pident"]
@@ -372,15 +396,21 @@ def main():
         if install:
             installer = smBGCInstaller()
             installer.install_databases()
-        else:
-            fasta_dir = Path(args["fasta_dir"])
-            out_dir = Path(args["o"])
-            cores = args["cores"]
-            strictness = args["strictness"]
-            genefinding_tool = args["genefinding_tool"]
-            local_runner = smBGCLocalRunner(
-                fasta_dir, out_dir, cores, strictness, genefinding_tool
-            )
-            local_runner.analyze_genomes()
-            parser = smBGCParser(out_dir, cores)
-            parser.gather_results()
+            return
+        fasta_dir = Path(args["fasta_dir"])
+        if not checks.check_if_dir_exists(fasta_dir):
+            print(f"{fasta_dir} does not exist")
+            return
+        if checks.check_if_dir_is_empty(fasta_dir):
+            print(f"{fasta_dir} is empty")
+            return
+        out_dir = Path(args["o"])
+        cores = args["cores"]
+        strictness = args["strictness"]
+        genefinding_tool = args["genefinding_tool"]
+        local_runner = smBGCLocalRunner(
+            fasta_dir, out_dir, cores, strictness, genefinding_tool
+        )
+        local_runner.analyze_genomes()
+        parser = smBGCParser(out_dir, cores)
+        parser.gather_results()
