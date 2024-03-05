@@ -1,12 +1,18 @@
 """ Calculate the core proteins and fingerprints based on a given reference genome"""
 import pandas as pd
-from typing import Union 
+from typing import Union
 from pathlib import Path
 
-class Core_identifier():
-    def __init__(self, orthology_fin: Path, out_dir: Path, species_file: Union[None,Path], core_perc: float):
-        """
-        """
+
+class Core_identifier:
+    def __init__(
+        self,
+        orthology_fin: Path,
+        out_dir: Path,
+        species_file: Union[None, Path],
+        core_perc: float,
+    ):
+        """ """
         self.core_perc = core_perc
         self.out_dir = out_dir / "Core_and_fingerprints"
         self.orthology_fin = orthology_fin
@@ -35,12 +41,16 @@ class Core_identifier():
             return
         species_col = "FastANI_species"
         ref_cluster = self.species_df.loc[self.ref, species_col]
-        group_orgs = self.species_df[self.species_df[species_col] == ref_cluster].index.tolist()
+        group_orgs = self.species_df[
+            self.species_df[species_col] == ref_cluster
+        ].index.tolist()
         group_orgs.remove(self.ref)
-        non_group_orgs = self.species_df[self.species_df["FastANI_species"] != ref_cluster].index.tolist()
+        non_group_orgs = self.species_df[
+            self.species_df["FastANI_species"] != ref_cluster
+        ].index.tolist()
         self.group_orgs = group_orgs
         self.non_group_orgs = non_group_orgs
-    
+
     def calculate_protein_presence(self) -> pd.DataFrame:
         tmpdf = self.orthology_df.copy().drop(self.orthology_df.columns, axis=1)
         tmpdf["Group orthologues"] = self.orthology_df[self.group_orgs].sum(axis=1)
@@ -48,20 +58,24 @@ class Core_identifier():
         tmpdf["Group orthologues %"] = round(
             (tmpdf["Group orthologues"] / (len(self.group_orgs) + 1)) * 100, 2
         )
-        tmpdf["Non group orthologues"] = self.orthology_df[self.non_group_orgs].sum(axis=1)
+        tmpdf["Non group orthologues"] = self.orthology_df[self.non_group_orgs].sum(
+            axis=1
+        )
         tmpdf["Non group orthologues %"] = round(
             tmpdf["Non group orthologues"] / len(self.non_group_orgs) * 100, 2
         )
         return tmpdf
-    
+
     def identify_core_proteins(self, df: pd.DataFrame) -> dict:
         """"""
         core_proteins = df[df["Group orthologues %"] >= self.core_perc].index.tolist()
-        fingerprints = df[(df["Group orthologues %"] == 100) & (df["Non group orthologues %"] == 0)].index.tolist()
+        fingerprints = df[
+            (df["Group orthologues %"] == 100) & (df["Non group orthologues %"] == 0)
+        ].index.tolist()
         data = {}
         core_perc_col = f"Core_{self.core_perc}%"
         for protein in df.index.tolist():
-            data[protein] = {core_perc_col: 0,"Is fingerprint": 0}
+            data[protein] = {core_perc_col: 0, "Is fingerprint": 0}
             if protein in fingerprints:
                 data[protein]["Is fingerprint"] = 1
                 data[protein][core_perc_col] = 1
@@ -92,4 +106,3 @@ class Core_identifier():
         else:
             fout = self.out_dir / f"{self.ref}_species_core.xlsx"
         core_protein_data_df.to_excel(fout)
-

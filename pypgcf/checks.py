@@ -3,6 +3,7 @@ Perform necessary checks during environment setup
 """
 from pathlib import Path
 
+
 def check_if_dir_is_empty(directory: Path):
     """
     Check if a directory is empty
@@ -11,6 +12,7 @@ def check_if_dir_is_empty(directory: Path):
     if not any(items):
         return True
     return False
+
 
 def check_if_dir_exists(directory: Path):
     """

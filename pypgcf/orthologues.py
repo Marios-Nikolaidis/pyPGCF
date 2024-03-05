@@ -146,7 +146,7 @@ class Orthologues_identifier:
                     desc="Performing reciprocal DIAMOND/BLAST",
                     ascii=True,
                     leave=True,
-                    total=len(cmds)
+                    total=len(cmds),
                 )
             )
         return ref_fasta

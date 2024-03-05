@@ -13,6 +13,8 @@ from .phylogenomic import Phylogenomic
 from .eggnog import eggNOGRunner, eggNOGParser, eggNOGInstaller
 from .smbgc import smBGCLocalRunner, smBGCParser, smBGCInstaller
 import checks
+from tqdm import tqdm
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -180,7 +182,7 @@ def main():
     )
     eggnog.add_argument("-fasta_dir", metavar="fasta_dir", help="Input fasta directory")
     eggnog.add_argument("-o", metavar="o", help="Output directory")
-    eggnog.add_argument("--debug", help="Print debug information", action='store_true')
+    eggnog.add_argument("--debug", help="Print debug information", action="store_true")
     # eggnog.add_argument("--eggnog_results", metavar="file", help="Pre-computed eggnog results")
     eggnog_mapper = eggnog.add_argument_group("eggNOG mapper options")
     eggnog_mapper.add_argument(
@@ -313,8 +315,8 @@ def main():
                     line = line.rstrip()
                     og_matrix_list.append(line)
         og_matrix_list = [Path(og_matrix_in) for og_matrix_in in og_matrix_list]
-        for og_matrix_in in og_matrix_list:
-            core_perc = args["core_perc"]
+        for og_matrix_in in tqdm(og_matrix_list, ascii=True, desc="Calculating core"):
+            core_perc = float(args["core_perc"])
             core_identifier = Core_identifier(
                 og_matrix_in, out_dir, species_file, core_perc
             )
@@ -385,7 +387,14 @@ def main():
         for core_proteins_file in core_proteins_file_list:
             core_proteins_file = Path(core_proteins_file)
             runner = eggNOGRunner(
-                fasta_dir, core_proteins_file, out_dir, cores, pident, qcov, scov, debug=debug
+                fasta_dir,
+                core_proteins_file,
+                out_dir,
+                cores,
+                pident,
+                qcov,
+                scov,
+                debug=debug,
             )
             runner.execute_eggnog_mapper()
         parser = eggNOGParser(fasta_dir, core_proteins_file_list, out_dir)
