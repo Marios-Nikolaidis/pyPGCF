@@ -109,7 +109,7 @@ def main():
     )
     orthologues_blast.add_argument(
         "--dmnd_sensitivity",
-        help="Sensitivity settings for DIAMOND",
+        help="Sensitivity settings for DIAMOND i.e. very_sensitive",
         default=config.orthologues_dmnd_sensitivity,
     )
     orthologues_blast.add_argument(
@@ -268,7 +268,7 @@ def main():
         ref = args["ref"]
         ref_list = args["ref_list"]
         input_type = args["type"]
-        cores = args["cores"]
+        cores = int(args["cores"])
         evalue = args["evalue"]
         dmdnd_sensitivity = args["dmnd_sensitivity"]
         no_filter_orthologues = args["no_filter_orthologues"]

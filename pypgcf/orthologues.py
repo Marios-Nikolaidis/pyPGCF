@@ -66,7 +66,7 @@ class Orthologues_identifier:
         Create diamond/blast database for a fasta file
         """
         for fasta_file in tqdm(
-            self.fasta_files, desc="Preparing DIAMOND/BLAST database"
+            self.fasta_files, desc="Preparing DIAMOND/BLAST database", ascii=True
         ):
             database_f = self.blast_db_dir / fasta_file.stem
             cmd = f"{self.blast_bin} makedb --in {fasta_file} --quiet --db {database_f} --threads {self.blast_cores}"  # DIAMOND
@@ -146,6 +146,7 @@ class Orthologues_identifier:
                     desc="Performing reciprocal DIAMOND/BLAST",
                     ascii=True,
                     leave=True,
+                    total=len(cmds)
                 )
             )
         return ref_fasta
