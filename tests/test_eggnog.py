@@ -1,13 +1,9 @@
 import unittest
 import pandas as pd
-from ..pypgcf.eggnog import (
-    eggNOGInstaller,
-    eggNOGRunner,
-    eggNOGParser
-)
+from ..pypgcf.eggnog import eggNOGInstaller, eggNOGRunner, eggNOGParser
+
 
 class TestModule(unittest.TestCase):
-
     # def test_installation(self):
     #     resources_dir = Path("data/db")
     #     resources_dir.mkdir(exist_ok=True)
@@ -79,11 +75,11 @@ class TestModule(unittest.TestCase):
     #     runner = eggNOGRunner(resources_dir, protein_fasta_dir, core_protein_table_f, out_dir,
     #                           cores, pident, qcov, scov, debug)
     #
-    #     runner.execute_eggnog_mapper() 
+    #     runner.execute_eggnog_mapper()
     #     self.assertEqual(runner.execute_status, 0)
     #     self.assertIs(runner.eggnog_raw_results_file.exists(), True)
     #     self.assertIs(runner.eggnog_raw_results_file.with_suffix(".csv.emmaper.hits").exists(), False)
-    #     
+    #
     # def test_parse_eggnog_results(self):
     #     protein_fasta_dir = Path("data/Protein_fasta_files")
     #     core_protein_table_f = Path("data/GCF_000009045.1_species_core.xlsx")
@@ -131,7 +127,7 @@ class TestModule(unittest.TestCase):
     #         for category, val in zip(categories, values):
     #             self.assertEqual(parser.cog_categories_data[category][protein_set], val)
     #
-    # 
+    #
     # def test_compare_sets_with_hypergeometric_test(self):
     #     protein_fasta_dir = Path("data/Protein_fasta_files")
     #     core_protein_table_f = Path("data/GCF_000009045.1_species_core.xlsx")
@@ -155,4 +151,4 @@ class TestModule(unittest.TestCase):
     #     #self.ass
     #
     def test_eggnog_runner_list(self):
-
+        pass

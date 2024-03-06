@@ -46,6 +46,9 @@ class smBGCLocalRunner:
                 f"{genome_fasta_file.absolute()}",
             ]
         )
+        return cmd
+
+    def run_antismash_cmd(self, cmd: str):
         os.system(cmd)
 
     def analyze_genomes(self):
@@ -56,7 +59,9 @@ class smBGCLocalRunner:
             # Keep the system running smoothly
         genome_files = list(self.genome_fasta_dir.glob("*"))
         genome_out_dirs = []
-        for genome_file in genome_files:
+        for genome_file in tqdm(
+            genome_files, desc="Running antiSMASH", ascii=True, leave=True
+        ):
             genome_out_dir = self.antismash_raw_results_dir / genome_file.stem
             genome_out_dirs.append(genome_out_dir)
             genome_out_dir.mkdir(exist_ok=True, parents=True)

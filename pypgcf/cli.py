@@ -4,14 +4,17 @@ Git: https://github.com/Marios-Nikolaidis
 email: marionik23@gmail.com
 """
 import argparse
-from . import config
+import config
 from pathlib import Path
-from .species_demarcation import SpeciesDemarcator
-from .orthologues import Orthologues_identifier
-from .core import Core_identifier
-from .phylogenomic import Phylogenomic
-from .eggnog import eggNOGRunner, eggNOGParser, eggNOGInstaller
-from .smbgc import smBGCLocalRunner, smBGCParser, smBGCInstaller
+from species_demarcation import SpeciesDemarcator
+from orthologues import Orthologues_identifier
+from core import Core_identifier
+from phylogenomic import Phylogenomic
+from eggnog import eggNOGRunner, eggNOGParser, eggNOGInstaller
+from smbgc import smBGCLocalRunner, smBGCParser, smBGCInstaller
+import checks
+from tqdm import tqdm
+
 
 
 def main():
@@ -85,7 +88,7 @@ def main():
         type=int,
     )
 
-    # 2.orthologues module
+    # orthologues module
     orthologues = subparsers.add_parser(
         "orthologues",
         help="orthologues module",
@@ -114,14 +117,14 @@ def main():
     )
     orthologues_blast.add_argument(
         "--dmnd_sensitivity",
-        help="Sensitivity settings for DIAMOND",
+        help="Sensitivity settings for DIAMOND i.e. very_sensitive",
         default=config.orthologues_dmnd_sensitivity,
     )
     orthologues_blast.add_argument(
         "--no_filter_orthologues", help="Do not filter orthologues", action="store_true"
     )
 
-    # 3.core module
+    # core module
     core = subparsers.add_parser(
         "core",
         help="core module",
@@ -146,7 +149,7 @@ def main():
         default=config.core_core_perc,
     )
 
-    # 4.phylogenomic module
+    # phylogenomic module
     phylogenomic = subparsers.add_parser(
         "phylogenomic",
         help="phylogenomic module",
@@ -173,7 +176,7 @@ def main():
         "--tree_model", help="Specific evolutionary model for tree calculation"
     )
 
-    # 5.eggnog module
+    # eggnog module
     eggnog = subparsers.add_parser(
         "eggnog",
         help="eggnog module",
@@ -192,6 +195,8 @@ def main():
     )
     eggnog.add_argument("-fasta_dir", metavar="fasta_dir", help="Input fasta directory")
     eggnog.add_argument("-o", metavar="o", help="Output directory")
+    eggnog.add_argument("--debug", help="Print debug information", action="store_true")
+    # eggnog.add_argument("--eggnog_results", metavar="file", help="Pre-computed eggnog results")
     eggnog_mapper = eggnog.add_argument_group("eggNOG mapper options")
     eggnog_mapper.add_argument(
         "--cores",
@@ -217,7 +222,7 @@ def main():
         "--install", help="Install the eggNOG database", action="store_true"
     )
 
-    # 6.smbgc module
+    # smbgc module
     smbgc = subparsers.add_parser(
         "smbgc",
         help="smbgc module",
@@ -253,11 +258,18 @@ def main():
         help="Install antiSMASH and the required database",
         action="store_true",
     )
+    # smbgc.add_argument("--remote", help="Submit queries to antiSMASH web service", action="store_true")
 
     # Parse arguments
     args = vars(parser.parse_args())
     if args["module"] == "species_demarcation":
         in_dir = Path(args["in"])
+        if not checks.check_if_dir_exists(in_dir):
+            print(f"{in_dir} does not exist")
+            return
+        if checks.check_if_dir_is_empty(in_dir):
+            print(f"{in_dir} is empty")
+            return
         out_dir = Path(args["o"])
         fastani_cores = args["fastani_cores"]
         kmer = args["kmer"]
@@ -275,15 +287,21 @@ def main():
             inflation,
             mcl_cores,
         )
-        demarcator.assign_species()  # Need to fix this
+        demarcator.assign_species()  # TODO: Need to fix this
 
     if args["module"] == "orthologues":
         fasta_in_dir = Path(args["in"])
+        if not checks.check_if_dir_exists(fasta_in_dir):
+            print(f"{fasta_in_dir} does not exist")
+            return
+        if checks.check_if_dir_is_empty(fasta_in_dir):
+            print(f"{fasta_in_dir} is empty")
+            return
         out_dir = Path(args["o"])
         ref = args["ref"]
         ref_list = args["ref_list"]
         input_type = args["type"]
-        cores = args["cores"]
+        cores = int(args["cores"])
         evalue = args["evalue"]
         dmdnd_sensitivity = args["dmnd_sensitivity"]
         no_filter_orthologues = args["no_filter_orthologues"]
@@ -316,8 +334,8 @@ def main():
                     line = line.rstrip()
                     og_matrix_list.append(line)
         og_matrix_list = [Path(og_matrix_in) for og_matrix_in in og_matrix_list]
-        for og_matrix_in in og_matrix_list:
-            core_perc = args["core_perc"]
+        for og_matrix_in in tqdm(og_matrix_list, ascii=True, desc="Calculating core"):
+            core_perc = float(args["core_perc"])
             core_identifier = Core_identifier(
                 og_matrix_in, out_dir, species_file, core_perc
             )
@@ -325,6 +343,12 @@ def main():
 
     if args["module"] == "phylogenomic":
         fasta_dir = Path(args["fasta_dir"])
+        if not checks.check_if_dir_exists(fasta_dir):
+            print(f"{fasta_dir} does not exist")
+            return
+        if checks.check_if_dir_is_empty(fasta_dir):
+            print(f"{fasta_dir} is empty")
+            return
         og_matrix_in = Path(args["in"])
         out_dir = Path(args["o"])
         cores = args["cores"]
@@ -350,6 +374,12 @@ def main():
             print(f"-o is needed")
             return
         fasta_dir = Path(fasta_dir)
+        if not checks.check_if_dir_exists(fasta_dir):
+            print(f"{fasta_dir} does not exist")
+            return
+        if checks.check_if_dir_is_empty(fasta_dir):
+            print(f"{fasta_dir} is empty")
+            return
         out_dir = Path(out_dir)
         cores = args["cores"]
         pident = args["pident"]
@@ -371,10 +401,21 @@ def main():
         core_proteins_file_list = [
             Path(core_proteins_file) for core_proteins_file in core_proteins_file_list
         ]
+        debug = False
+        if args["debug"]:
+            debug = True
         for core_proteins_file in core_proteins_file_list:
             core_proteins_file = Path(core_proteins_file)
             runner = eggNOGRunner(
-                fasta_dir, core_proteins_file, out_dir, cores, pident, qcov, scov, nucl
+                fasta_dir,
+                core_proteins_file,
+                out_dir,
+                cores,
+                pident,
+                qcov,
+                scov,
+                nucl,
+                debug=debug,
             )
             runner.execute_eggnog_mapper()
         parser = eggNOGParser(fasta_dir, core_proteins_file_list, out_dir)
@@ -385,15 +426,21 @@ def main():
         if install:
             installer = smBGCInstaller()
             installer.install_databases()
-        else:
-            fasta_dir = Path(args["fasta_dir"])
-            out_dir = Path(args["o"])
-            cores = args["cores"]
-            strictness = args["strictness"]
-            genefinding_tool = args["genefinding_tool"]
-            local_runner = smBGCLocalRunner(
-                fasta_dir, out_dir, cores, strictness, genefinding_tool
-            )
-            local_runner.analyze_genomes()
-            parser = smBGCParser(out_dir, cores)
-            parser.gather_results()
+            return
+        fasta_dir = Path(args["fasta_dir"])
+        if not checks.check_if_dir_exists(fasta_dir):
+            print(f"{fasta_dir} does not exist")
+            return
+        if checks.check_if_dir_is_empty(fasta_dir):
+            print(f"{fasta_dir} is empty")
+            return
+        out_dir = Path(args["o"])
+        cores = args["cores"]
+        strictness = args["strictness"]
+        genefinding_tool = args["genefinding_tool"]
+        local_runner = smBGCLocalRunner(
+            fasta_dir, out_dir, cores, strictness, genefinding_tool
+        )
+        local_runner.analyze_genomes()
+        parser = smBGCParser(out_dir, cores)
+        parser.gather_results()

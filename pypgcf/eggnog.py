@@ -61,6 +61,8 @@ class eggNOGRunner:
                 continue
             found = True
             self.fasta_file = fasta_file
+        if self.debug:
+            print(f"Found reference fasta file: {self.fasta_file}")
         if not found:
             raise FileNotFoundError(
                 f"{self.ref} fasta file not found in {self.fasta_dir.name}"
@@ -93,6 +95,8 @@ class eggNOGRunner:
                     " > /dev/null ",
                 ]
             )
+        if self.debug:
+            eggnog_cmd = eggnog_cmd.replace(" > /dev/null ", "")
         self.eggnog_cmd = eggnog_cmd
 
     def clean_unessecary_output(self):
@@ -104,6 +108,8 @@ class eggNOGRunner:
             ".csv.emapper.annotations"
         )
         for f in files_to_remove:
+            if self.debug:
+                print(f"Cleaning unecessary output. Removing: {f}")
             f.unlink()
         file_to_rename.rename(self.eggnog_raw_results_file)
 
@@ -118,6 +124,7 @@ class eggNOGRunner:
         if self.debug:
             status = os.system(self.eggnog_cmd)
             self.execute_status = status
+            print(f"Eggnog mapper execute status: {self.execute_status}")
         else:
             os.system(self.eggnog_cmd)
         self.clean_unessecary_output()
@@ -176,6 +183,9 @@ class eggNOGParser:
             "U": "Intracellular trafficking, secretion, and vesicular transport",
             "V": "Defense mechanisms",
             "W": "Extracellular structures",
+            "X": "Mobilome: Prophages, transposons",
+            "R": "General function, prediction only",
+            "Y": "Nuclear structure",
             "Z": "Cytoskeleton",
         }
 
@@ -358,6 +368,7 @@ class eggNOGParser:
                 total_data["fingerprint"].append(tmp_data["fingerprint"])
         self.hypergeometric_dfs = [
             pd.concat(total_data["core"]),
+            pd.concat(total_data["fingerprint"]),
         ]
         if len(total_data["fingerprint"]) != 0:
             self.hypergeometric_dfs.append(pd.concat(total_data["fingerprint"]))

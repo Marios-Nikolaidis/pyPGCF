@@ -1,12 +1,12 @@
 {% set name = "pyPGCF" %}
-{% set version = "0.1.1" %}
+{% set version = "0.1.2" %}
 
 package:
   name: "{{ name|lower }}"
   version: "{{ version }}"
 
 source:
-  git_url: "https://github.com/Marios-Nikolaidis/pyPGCF"
+  git_url: "https://github.com/m-nikolaidis/pyPGCF"
   git_depth: 1
 
 build:
@@ -28,6 +28,7 @@ requirements:
     - eggnog-mapper
     - biopython ==1.78
     - antismash ==6.1.1
+    - diamond ==2.0.9
 
 about:
   home: "https://github.com/Marios-Nikolaidis/pyPGCF"
@@ -37,4 +38,4 @@ about:
 
 extra:
   recipe-maintainers:
-    - "Marios-Nikolaidis"
+    - "Marios Nikolaidis"

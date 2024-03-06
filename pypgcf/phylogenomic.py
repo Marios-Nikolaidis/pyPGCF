@@ -4,8 +4,6 @@ from pathlib import Path
 from typing import Generator, List, Union
 import os
 from datetime import datetime
-
-# import re
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 from Bio import SeqIO, AlignIO
@@ -126,11 +124,6 @@ class Phylogenomic:
         Join the aligned orthologous groups into a superalignment
         :return: None
         """
-        # def _sortAlphanum(iteratable):
-        #     # Helper func Sort the given motif list alphanumerically :return: sorted list
-        #     int_convert = lambda text: int(text) if text.isdigit() else text
-        #     sorting_key = lambda key: [ int_convert(c) for c in re.split('([0-9]+)', key) ]
-        #     return sorted(iteratable, key = sorting_key)
 
         def init_superalignment_file(ref, genomes, superseq_file):
             """
