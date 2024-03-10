@@ -15,9 +15,9 @@ build:
 requirements:
   host:
     - pip
-    - python >=3.7
+    - python ==3.9.*
   run:
-    - python >=3.7
+    - python ==3.9.*
     - iqtree >=2.*
     - gblocks
     - muscle ==3.8.*
@@ -25,10 +25,8 @@ requirements:
     - xlsxwriter
     - openpyxl
     - tqdm
-    - eggnog-mapper
-    - biopython ==1.78
-    - antismash ==6.1.1
-    - diamond ==2.0.9
+    - eggnog-mapper ==2.1.8
+    - antismash ==7.1.0
 
 about:
   home: "https://github.com/Marios-Nikolaidis/pyPGCF"
