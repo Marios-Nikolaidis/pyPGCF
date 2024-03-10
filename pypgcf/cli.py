@@ -16,7 +16,6 @@ import checks
 from tqdm import tqdm
 
 
-
 def main():
     parser = argparse.ArgumentParser(
         prog="pyPGCF",
@@ -229,9 +228,14 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     smbgc.add_argument(
-        "-fasta_dir", metavar="fasta_dir", help="Directory with genomic fasta files"
+        "-fasta_dir",
+        metavar="fasta_dir",
+        help="Directory with genomic fasta files",
+        required=True,
     )
-    smbgc.add_argument("-o", metavar="output_dir", help="Output directory")
+    smbgc.add_argument(
+        "-o", metavar="output_dir", help="Output directory", required=True
+    )
     smbgc.add_argument(
         "--cores",
         metavar="N",
@@ -242,7 +246,7 @@ def main():
     smbgc.add_argument(
         "--strictness",
         metavar="strictness",
-        help="antiSMASH strictness settings",
+        help="antiSMASH strictness settings (loose, relaxed, strict)",
         default=config.smbgc_strictness,
         type=str,
     )
@@ -255,7 +259,7 @@ def main():
     )
     smbgc.add_argument(
         "--install",
-        help="Install antiSMASH and the required database",
+        help="Install the required antiSMASH databases",
         action="store_true",
     )
     # smbgc.add_argument("--remote", help="Submit queries to antiSMASH web service", action="store_true")
@@ -428,16 +432,21 @@ def main():
             installer.install_databases()
             return
         fasta_dir = Path(args["fasta_dir"])
+        out_dir = Path(args["o"])
+        cores = args["cores"]
+        strictness = args["strictness"]
+        genefinding_tool = args["genefinding_tool"]
+        # Perform all the checks before running
         if not checks.check_if_dir_exists(fasta_dir):
             print(f"{fasta_dir} does not exist")
             return
         if checks.check_if_dir_is_empty(fasta_dir):
             print(f"{fasta_dir} is empty")
             return
-        out_dir = Path(args["o"])
-        cores = args["cores"]
-        strictness = args["strictness"]
-        genefinding_tool = args["genefinding_tool"]
+        if not checks.is_valid_antismash_strict(strictness):
+            return
+        if not checks.is_valid_genefinding_tool(genefinding_tool):
+            return
         local_runner = smBGCLocalRunner(
             fasta_dir, out_dir, cores, strictness, genefinding_tool
         )

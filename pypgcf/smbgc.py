@@ -4,9 +4,10 @@ from concurrent.futures import ProcessPoolExecutor
 import json
 import pandas as pd
 from tqdm import tqdm
-from multiprocessing import cpu_count
+from config import system_cores
 from math import ceil as math_ceil
 from datetime import datetime
+from checks import check_if_file_exists
 
 
 class smBGCInstaller:
@@ -52,7 +53,6 @@ class smBGCLocalRunner:
         os.system(cmd)
 
     def analyze_genomes(self):
-        system_cores = cpu_count()
         maximum_number_of_available_jobs = math_ceil(system_cores / self.cores)
         if maximum_number_of_available_jobs > 1:
             maximum_number_of_available_jobs -= 1
@@ -108,6 +108,8 @@ class smBGCParser:
     def parse_strain_results(self, strain_subdir: Path) -> pd.DataFrame:
         genome = strain_subdir.name
         json_f = strain_subdir / (genome + ".json")
+        if not check_if_file_exists(json_f):
+            return pd.DataFrame()
         json_str = self.load_json(str(json_f))
         data = []
         for seq_obj in json_str["records"]:
