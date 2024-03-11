@@ -1,6 +1,6 @@
 """
 Author: Marios Nikolaidis
-Git: https://github.com/Marios-Nikolaidis
+Git: https://github.com/m-nikolaidis
 email: marionik23@gmail.com
 """
 import argparse
