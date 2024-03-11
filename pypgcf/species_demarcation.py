@@ -16,7 +16,7 @@ class SpeciesDemarcator:
         kmer: int,
         fraglen: int,
         minfrac: float,
-        inflation: int,
+        inflation: float,
         mcl_cores: int,
     ):
         self.in_dir = in_dir

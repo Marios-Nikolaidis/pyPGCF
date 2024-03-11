@@ -276,10 +276,10 @@ def main():
             return
         out_dir = Path(args["o"])
         fastani_cores = args["fastani_cores"]
-        kmer = args["kmer"]
-        fraglen = args["fraglen"]
-        minfraction = args["minfraction"]
-        inflation = args["inflation"]
+        kmer = int(args["kmer"])
+        fraglen = int(args["fraglen"])
+        minfraction = float(args["minfraction"])
+        inflation = float(args["inflation"])
         mcl_cores = args["mcl_cores"]
         demarcator = SpeciesDemarcator(
             in_dir,
@@ -355,7 +355,7 @@ def main():
             return
         og_matrix_in = Path(args["in"])
         out_dir = Path(args["o"])
-        cores = args["cores"]
+        cores = int(args["cores"])
         no_keep_fasta = args["no_keep_fasta"]
         tree_model = args["tree_model"]
         phylogenomic = Phylogenomic(
@@ -385,7 +385,7 @@ def main():
             print(f"{fasta_dir} is empty")
             return
         out_dir = Path(out_dir)
-        cores = args["cores"]
+        cores = int(args["cores"])
         pident = args["pident"]
         qcov = args["qcov"]  # Query coverage
         scov = args["scov"]  # Subject coverage
@@ -433,7 +433,7 @@ def main():
             return
         fasta_dir = Path(args["fasta_dir"])
         out_dir = Path(args["o"])
-        cores = args["cores"]
+        cores = int(args["cores"])
         strictness = args["strictness"]
         genefinding_tool = args["genefinding_tool"]
         # Perform all the checks before running
