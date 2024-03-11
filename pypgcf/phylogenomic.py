@@ -1,18 +1,20 @@
-import pandas as pd
-from numpy import nan as np_nan
+from concurrent.futures import ProcessPoolExecutor
+from datetime import datetime
+from os import system
 from pathlib import Path
 from typing import Generator, List, Union
-import os
-from datetime import datetime
+
+from numpy import nan as np_nan
 from tqdm import tqdm
-from concurrent.futures import ProcessPoolExecutor
-from Bio import SeqIO, AlignIO
+
+from Bio import AlignIO, SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
+import pandas as pd
 
 
 def _execute_cmd(cmd: str):
-    os.system(cmd)
+    system(cmd)
 
 
 class Phylogenomic:

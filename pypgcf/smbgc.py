@@ -1,13 +1,15 @@
-import os
-from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor
-import json
-import pandas as pd
-from tqdm import tqdm
-from config import system_cores
-from math import ceil as math_ceil
 from datetime import datetime
+import json
+from math import ceil as math_ceil
+from os import system
+from pathlib import Path
+
+from tqdm import tqdm
+
 from checks import check_if_file_exists
+from config import system_cores
+import pandas as pd
 
 
 class smBGCInstaller:
@@ -17,7 +19,7 @@ class smBGCInstaller:
     def install_databases(self):
         print("Downloading databases of antiSMASH")
         cmd = "download-antismash-databases"
-        os.system(cmd)
+        system(cmd)
 
 
 class smBGCLocalRunner:
@@ -50,7 +52,7 @@ class smBGCLocalRunner:
         return cmd
 
     def run_antismash_cmd(self, cmd: str):
-        os.system(cmd)
+        system(cmd)
 
     def analyze_genomes(self):
         maximum_number_of_available_jobs = math_ceil(system_cores / self.cores)

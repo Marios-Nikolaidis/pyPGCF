@@ -1,8 +1,8 @@
 # Default configurations for the modules
 # By M. Nikolaidis
 
-from sys import platform as platform
 from multiprocessing import cpu_count
+from sys import platform as platform
 
 system = platform
 system_cores = cpu_count()

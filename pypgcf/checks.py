@@ -2,7 +2,8 @@
 Perform necessary checks during environment setup
 """
 from pathlib import Path
-import config
+
+from pypgcf import config
 
 
 def check_if_dir_is_empty(directory: Path):

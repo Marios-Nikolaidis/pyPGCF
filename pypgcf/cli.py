@@ -4,16 +4,18 @@ Git: https://github.com/Marios-Nikolaidis
 email: marionik23@gmail.com
 """
 import argparse
-import config
 from pathlib import Path
-from species_demarcation import SpeciesDemarcator
-from orthologues import Orthologues_identifier
-from core import Core_identifier
-from phylogenomic import Phylogenomic
-from eggnog import eggNOGRunner, eggNOGParser, eggNOGInstaller
-from smbgc import smBGCLocalRunner, smBGCParser, smBGCInstaller
-import checks
+
 from tqdm import tqdm
+
+from pypgcf import config
+from pypgcf import checks
+from pypgcf.core import Core_identifier
+from pypgcf.eggnog import eggNOGInstaller, eggNOGParser, eggNOGRunner
+from pypgcf.orthologues import Orthologues_identifier
+from pypgcf.phylogenomic import Phylogenomic
+from pypgcf.smbgc import smBGCInstaller, smBGCLocalRunner, smBGCParser
+from pypgcf.species_demarcation import SpeciesDemarcator
 
 
 def main():

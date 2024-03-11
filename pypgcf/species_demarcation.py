@@ -1,10 +1,12 @@
-import os
-import numpy as np
 import csv
-import pandas as pd
 from datetime import datetime
+from os import system
 from pathlib import Path
-from typing import Union, Generator, List
+from typing import Generator, List, Union
+
+import numpy as np
+
+import pandas as pd
 
 
 class SpeciesDemarcator:
@@ -50,7 +52,7 @@ class SpeciesDemarcator:
             self.minfrac,
             fout,
         )
-        os.system(cmd)
+        system(cmd)
 
     def prepare_input_for_mcl(self, input_file: Path) -> Path:
         """
@@ -71,19 +73,20 @@ class SpeciesDemarcator:
             f"Running MCL clustering: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}"
         )
         outdir = fastani_for_mcl.parent
-        os.system(
+        system(
             f"mcxload -abc {fastani_for_mcl} -o {outdir}/fastANI_mcx_mtrx.txt -write-tab {outdir}/fastANI_annot.tab > /dev/null 2>&1"
         )
-        os.system(
+        system(
             f"mcl {outdir}/fastANI_mcx_mtrx.txt -te {self.mcl_cores} -I {self.inflation} -o {outdir}/fastANI_mcl_out.txt > /dev/null 2>&1"
         )
-        os.system(
+        system(
             f"mcxdump -icl {outdir}/fastANI_mcl_out.txt -tabr {outdir}/fastANI_annot.tab -o {outdir}/fastANI_mcx_dump.txt > /dev/null 2>&1"
         )
-        os.system(
+        # TODO: These should be handled through an os agnostic way
+        system(
             f"rm {outdir}/fastANI_for_mcl.txt {outdir}/fastANI_mcx_mtrx.txt {outdir}/fastANI_annot.tab {outdir}/fastANI_mcl_out.txt {outdir}/FastANI_input.txt"
         )
-        os.system(f"mv {outdir}/fastANI_mcx_dump.txt {outdir}/fastANI_clusters.tsv")
+        system(f"mv {outdir}/fastANI_mcx_dump.txt {outdir}/fastANI_clusters.tsv")
         print("Done")
         return outdir / "fastANI_clusters.tsv"
 

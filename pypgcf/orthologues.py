@@ -1,13 +1,16 @@
 from concurrent.futures import ProcessPoolExecutor
+from datetime import datetime
 from math import floor
 from multiprocessing import cpu_count
-import os
-import pandas as pd
-from Bio import SeqIO
-from tqdm import tqdm
+from os import system
 from pathlib import Path
-from typing import  Union, Iterable
-from datetime import datetime
+from typing import Iterable, Union
+
+from tqdm import tqdm
+
+from Bio import SeqIO
+import pandas as pd
+
 
 class Orthologues_identifier:
     def __init__(
@@ -58,7 +61,7 @@ class Orthologues_identifier:
 
     def _execute_cmd(self, cmd: str) -> int:
         """Generic function to execute a command"""
-        return os.system(cmd)
+        return system(cmd)
 
     def create_blast_db(self) -> None:
         """
@@ -171,9 +174,7 @@ class Orthologues_identifier:
         tmp_df = pd.merge(ref_vs_query_df, query_vs_ref_df, on="RefSeq")
         df = tmp_df.drop(tmp_df[tmp_df.QuerySeq_x != tmp_df.QuerySeq_y].index)
         case1 = df[df["Pident_x"] >= df["Pident_y"]]
-        case1 = case1[
-            ["RefSeq", "QuerySeq_x", "Pident_x", "Evalue_x", "Bitscore_x"]
-        ]
+        case1 = case1[["RefSeq", "QuerySeq_x", "Pident_x", "Evalue_x", "Bitscore_x"]]
         case1 = case1.rename(
             columns={
                 "QuerySeq_x": "QuerySeq",
@@ -248,7 +249,9 @@ class Orthologues_identifier:
             ref_vs_query_df = self._get_best_subject(ref_vs_query_df)
             query_vs_ref_df = self._get_best_subject(query_vs_ref_df)
 
-            reciprocal_df = self._create_reciprocal_matrix(ref_vs_query_df, query_vs_ref_df)
+            reciprocal_df = self._create_reciprocal_matrix(
+                ref_vs_query_df, query_vs_ref_df
+            )
             if not self.no_filter:  # No_filtering is false
                 reciprocal_df = self._orthologue_filter(reciprocal_df)
             # Create reciprocal files with headers

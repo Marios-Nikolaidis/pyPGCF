@@ -1,8 +1,9 @@
+from os import system
 from pathlib import Path
+
 from tqdm import tqdm
-import os
-from pathlib import Path
-import asyncio
+
+# import asyncio
 
 
 class Downloader:
@@ -39,15 +40,15 @@ class Downloader:
                 f"--assembly-source RefSeq --dehydrated --filename {self.out_dir}/dataset.zip",
             ]
         )
-        os.system(cmd)
+        system(cmd)
 
     def unzip_dehydrated_archive(self):
         cmd = f"unzip {self.out_dir}/dataset.zip -d {self.out_dir}"
-        os.system(cmd)
+        system(cmd)
 
     async def rehydrate_download(self):
         cmd = f"datasets rehydrate --directory {self.out_dir}"
-        os.system(cmd)
+        system(cmd)
 
     def create_output_directories(self):
         outdirs = []
@@ -111,18 +112,3 @@ class Downloader:
         self.create_output_directories()
         self.organize_files()
         self.remove_dataset_archive()
-
-
-def main():
-    taxon = str(810)
-    assembly_levels = ["complete", "chromosome"]
-    out_dir = Path("/home/marios/Downloads/chlamydia_data")
-    genes = False
-    genomes = True
-    protein = True
-    downloader = Downloader(taxon, assembly_levels, out_dir, genes, genomes, protein)
-    asyncio.run(downloader.download())
-
-
-if __name__ == "__main__":
-    main()

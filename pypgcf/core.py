@@ -1,7 +1,8 @@
 """ Calculate the core proteins and fingerprints based on a given reference genome"""
-import pandas as pd
-from typing import Union
 from pathlib import Path
+from typing import Union
+
+import pandas as pd
 
 
 class Core_identifier:
@@ -24,7 +25,7 @@ class Core_identifier:
             self.genus = False
 
     def _turn_orthology_df_to_binary(self):
-        return self.orthology_df.applymap(lambda x: 0 if x == "X" else 1)
+        return self.orthology_df.map(lambda x: 0 if x == "X" else 1)
 
     def setup_directories(self):
         self.out_dir.mkdir(exist_ok=True, parents=True)

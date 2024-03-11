@@ -1,12 +1,13 @@
 """Add functional annotation to the proteins in the core genes excels"""
+from datetime import datetime
+from os import system
+from pathlib import Path
+import sysconfig
+from typing import List, Tuple
+
+from Bio import SeqIO
 import pandas as pd
 from scipy.stats import hypergeom
-from datetime import datetime
-from Bio import SeqIO
-from pathlib import Path
-from typing import Tuple, List
-import os
-import sysconfig
 
 
 class eggNOGInstaller:
@@ -23,7 +24,7 @@ class eggNOGInstaller:
         cmd = f"download_eggnog_data.py -y"
         if self.debug:
             cmd = f"download_eggnog_data.py -s -y"
-        os.system(cmd)
+        system(cmd)
 
 
 class eggNOGRunner:
@@ -122,11 +123,11 @@ class eggNOGRunner:
         self.create_eggnog_cmd()
         self.setup_directories()
         if self.debug:
-            status = os.system(self.eggnog_cmd)
+            status = system(self.eggnog_cmd)
             self.execute_status = status
             print(f"Eggnog mapper execute status: {self.execute_status}")
         else:
-            os.system(self.eggnog_cmd)
+            system(self.eggnog_cmd)
         self.clean_unessecary_output()
 
 
