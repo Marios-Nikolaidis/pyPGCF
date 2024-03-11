@@ -29,7 +29,7 @@ requirements:
     - antismash ==7.1.0
 
 about:
-  home: "https://github.com/Marios-Nikolaidis/pyPGCF"
+  home: "https://github.com/m-nikolaidis/pyPGCF"
   license: GPL
   license_file: LICENSE
   summary: "pyPGCF: PhyloGenomic, Core and Fingerprint analyses package"

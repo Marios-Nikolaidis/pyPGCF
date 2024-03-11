@@ -1,1 +1,2 @@
-$PYTHON setup.py install
+echo "Building the project"
+python -m pip install .
