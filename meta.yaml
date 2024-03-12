@@ -27,6 +27,7 @@ requirements:
     - tqdm
     - eggnog-mapper ==2.1.8
     - antismash ==7.1.0
+    - mcl
 
 about:
   home: "https://github.com/m-nikolaidis/pyPGCF"

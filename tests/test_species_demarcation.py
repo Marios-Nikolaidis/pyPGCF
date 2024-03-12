@@ -2,12 +2,8 @@ import unittest
 import sys
 from dataclasses import dataclass
 
-sys.path.append("../species_demarcation")
 
-from species_demarcation import (
-    create_input_for_fastani, perform_fastani,
-    prepare_input_for_mcl, run_mcl, parse_mcx_output
-)
+from pypgcf import species_demarcation
 from pathlib import Path
 
 @dataclass
@@ -18,26 +14,99 @@ class Data:
         self.fraglen = 3000
         self.minfraction = 0.2
         self.mcl_inflation = 2
-        self.data_dir = Path(__file__).parent / "../data"
+        self.data_dir = Path(__file__).parent / "../data/genomes/"
+        self.outdir = Path(__file__).parent / "test_output"
+        self.outdir.mkdir(exist_ok=True)
 
 
 class TestModule(unittest.TestCase):
     def test_create_input_for_fastani(self):
         data = Data()
-        files_for_fastani = list(data.data_dir.glob("*.fasta"))
-        org_list = data.data_dir/"org_list.txt"
-        create_input_for_fastani(files_for_fastani, org_list)
+        demarcator =  species_demarcation.SpeciesDemarcator(
+            in_dir = data.data_dir,
+            out_dir = data.outdir,
+            fastani_cores = data.cores,
+            kmer = data.kmer,
+            fraglen = data.fraglen,
+            minfrac = data.minfraction,
+            inflation = data.mcl_inflation,
+            mcl_cores = data.cores
+        )
+        files_for_fastani = list(data.data_dir.glob("*.fna"))
+        org_list = data.outdir / "org_list.txt"
+        demarcator.create_input_for_fastani(files_for_fastani, org_list)
         self.assertIs(org_list.exists(),True)
 
+    def test_perform_fastani(self):
+        data = Data()
+        demarcator =  species_demarcation.SpeciesDemarcator(
+            in_dir = data.data_dir,
+            out_dir = data.outdir,
+            fastani_cores = data.cores,
+            kmer = data.kmer,
+            fraglen = data.fraglen,
+            minfrac = data.minfraction,
+            inflation = data.mcl_inflation,
+            mcl_cores = data.cores
+        )
+        org_list = data.outdir / "org_list.txt"
+        files_for_fastani = list(data.data_dir.glob("*.fna"))
+        fastani_fout = data.outdir / "FastANI.tsv"
+        demarcator.create_input_for_fastani(files_for_fastani, org_list)
+        demarcator.perform_fastani(org_list, fastani_fout)
+        self.assertIs(fastani_fout.exists(),True)
 
-#fastani_fout = data_dir/"FastANI.tsv"
-#perform_fastani(org_list, cores, fraglen, minfraction, kmer, fastani_fout)
-## Need to read the output and check that all lines are correct
-#
-#fastani_for_mcl = prepare_input_for_mcl(fastani_fout)
-## Need to read the file and check that all lines are correct
-#
-#mcl_out = run_mcl(fastani_for_mcl, mcl_inflation, cores)
-#
-#parse_mcx_output(mcl_out)
-#
+    def prepare_input_for_mcl(self):
+        data = Data()
+        demarcator =  species_demarcation.SpeciesDemarcator(
+            in_dir = data.data_dir,
+            out_dir = data.outdir,
+            fastani_cores = data.cores,
+            kmer = data.kmer,
+            fraglen = data.fraglen,
+            minfrac = data.minfraction,
+            inflation = data.mcl_inflation,
+            mcl_cores = data.cores
+        )
+        fastani_fout = data.outdir / "FastANI.tsv"
+        mcl_input = demarcator.prepare_input_for_mcl(fastani_fout)
+        self.assertIs(mcl_input.exists(),True)
+
+    def test_run_mcl(self):
+        data = Data()
+        demarcator =  species_demarcation.SpeciesDemarcator(
+            in_dir = data.data_dir,
+            out_dir = data.outdir,
+            fastani_cores = data.cores,
+            kmer = data.kmer,
+            fraglen = data.fraglen,
+            minfrac = data.minfraction,
+            inflation = data.mcl_inflation,
+            mcl_cores = data.cores
+        )
+        fastani_fout = data.outdir / "FastANI.tsv"
+        mcl_input = demarcator.prepare_input_for_mcl(fastani_fout)
+        mcl_output = demarcator.run_mcl(mcl_input)
+        self.assertIs(mcl_output.exists(),True)
+
+    def test_parse_mcx_output(self):
+    # , fastani_from_mcl: Path) -> None:
+        data = Data()
+        demarcator =  species_demarcation.SpeciesDemarcator(
+            in_dir = data.data_dir,
+            out_dir = data.outdir,
+            fastani_cores = data.cores,
+            kmer = data.kmer,
+            fraglen = data.fraglen,
+            minfrac = data.minfraction,
+            inflation = data.mcl_inflation,
+            mcl_cores = data.cores
+        )
+        fastani_fout = data.outdir / "FastANI.tsv"
+        mcl_input = demarcator.prepare_input_for_mcl(fastani_fout)
+        mcl_output = demarcator.run_mcl(mcl_input)
+        demarcator.parse_mcx_output(mcl_output)
+        fastani_from_mcl = data.outdir / "FastANI_species_clusters.xlsx"
+        self.assertIs(fastani_from_mcl.exists(),True)
+
+
