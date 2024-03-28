@@ -199,7 +199,7 @@ class Phylogenomic:
             f.rename(renamed)
 
     def clean_fasta_files(self):
-        directories_to_clean = [self.fasta_dir, self.og_fasta_dir_aln]
+        directories_to_clean = [self.og_fasta_dir, self.og_fasta_dir_aln]
         for directory in directories_to_clean:
             files = directory.glob("*")
             for f in files:
