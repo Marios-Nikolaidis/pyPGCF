@@ -3,7 +3,6 @@ tests/__pycache__/
 tests/__pycache__/*
 pypgcf/__pycache__/*
 pyPGCF.egg-info/
-resources/*
 example/*
 archives/*
 data/
