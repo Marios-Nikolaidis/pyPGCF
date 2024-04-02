@@ -35,22 +35,24 @@ class Core_identifier:
         Split the genomes into groups based on the species cluster (cluster_col)
         If genus is True, then the complete table (taxon) is used
         """
+        total_genomes = set(self.orthology_df.columns.tolist())
+        total_genomes.remove(self.ref)
         if self.genus:
-            group_orgs = self.orthology_df.columns.tolist()
-            self.group_orgs = group_orgs
+            self.group_orgs = list(total_genomes)
             self.non_group_orgs = []
             return
         species_col = "FastANI_species"
         ref_cluster = self.species_df.loc[self.ref, species_col]
-        group_orgs = self.species_df[
+        ref_sp_genomes = set(self.species_df[
             self.species_df[species_col] == ref_cluster
-        ].index.tolist()
-        group_orgs.remove(self.ref)
-        non_group_orgs = self.species_df[
-            self.species_df["FastANI_species"] != ref_cluster
-        ].index.tolist()
-        self.group_orgs = group_orgs
-        self.non_group_orgs = non_group_orgs
+        ].index.tolist())
+        non_group_orgs = set(self.species_df[
+            self.species_df[species_col] != ref_cluster
+        ].index.tolist())
+        group_genomes = ref_sp_genomes.intersection(total_genomes)
+        non_group_genomes = non_group_orgs.intersection(total_genomes)
+        self.group_orgs = list(group_genomes)
+        self.non_group_orgs = list(non_group_genomes)
 
     def calculate_protein_presence(self) -> pd.DataFrame:
         tmpdf = self.orthology_df.copy().drop(self.orthology_df.columns, axis=1)
