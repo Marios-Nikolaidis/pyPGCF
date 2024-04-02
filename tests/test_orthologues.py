@@ -1,20 +1,20 @@
-from collections.abc import Callable
-from typing import Any
+from dataclasses import dataclass
+from pathlib import Path
 import unittest
 from pypgcf import orthologues
 
 
-class TestModule(unittest.TestCase):
-    def setup(self):
-        protein_names = []
-        protein_sequences = []
-        nucleotide_names = []
-        nucleotide_sequences = []
-        wf = open("test_prot.fa", "w")
-        for protein, sequence in zip(protein_names, protein_sequences):
-            to_write = f">{protein}\n{sequence}"
-            wf.write(to_write)
+@dataclass
+class Data:
+    fasta_dir = Path(__file__).parent / "../data/protein/"
+    out_dir = Path(__file__).parent / "../data/s/orthologues/"
+    ref = "GCF_000009045"
+    evalue = 1e-5
+    dmnd_sensitivity = "sensitive"
+    input_type = "prot"
 
+
+class TestModule(unittest.TestCase):
     def test_create_blast_db(self):
         pass
 
