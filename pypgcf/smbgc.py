@@ -1,15 +1,14 @@
 from concurrent.futures import ProcessPoolExecutor
-from datetime import datetime
 import json
 from math import ceil as math_ceil
 from os import system
 from pathlib import Path
 
+import pandas as pd
 from tqdm import tqdm
 
-from pypgcf.checks import check_if_file_exists
-from pypgcf.config import system_cores
-import pandas as pd
+from checks import check_if_file_exists
+from config import system_cores
 
 
 class smBGCInstaller:
@@ -61,17 +60,16 @@ class smBGCLocalRunner:
             # Keep the system running smoothly
         genome_files = list(self.genome_fasta_dir.glob("*"))
         genome_out_dirs = []
-        for genome_file in tqdm(
-            genome_files, desc="Running antiSMASH", ascii=True, leave=True
-        ):
+        for genome_file in genome_files:
             genome_out_dir = self.antismash_raw_results_dir / genome_file.stem
             genome_out_dirs.append(genome_out_dir)
             genome_out_dir.mkdir(exist_ok=True, parents=True)
+        commands = [self.create_antismash_cmd(gf, go) for gf, go in zip(genome_files, genome_out_dirs)]
         with ProcessPoolExecutor(maximum_number_of_available_jobs) as executor:
             list(
                 tqdm(
                     executor.map(
-                        self.create_antismash_cmd, genome_files, genome_out_dirs
+                        self.run_antismash_cmd, commands
                     ),
                     desc="Running antiSMASH",
                     ascii=True,
@@ -178,4 +176,3 @@ class smBGCParser:
                 total_data.append(dataframe)
         self.final_df = pd.concat(total_data)
         self.write_antismash_results()
-        print(f"Done: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")

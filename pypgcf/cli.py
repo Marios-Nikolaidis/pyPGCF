@@ -5,6 +5,7 @@ email: marionik23@gmail.com
 """
 import argparse
 from pathlib import Path
+from datetime import datetime
 
 from tqdm import tqdm
 
@@ -233,10 +234,9 @@ def main():
         "-fasta_dir",
         metavar="fasta_dir",
         help="Directory with genomic fasta files",
-        required=True,
     )
     smbgc.add_argument(
-        "-o", metavar="output_dir", help="Output directory", required=True
+        "-o", metavar="output_dir", help="Output directory"
     )
     smbgc.add_argument(
         "--cores",
@@ -433,8 +433,14 @@ def main():
             installer = smBGCInstaller()
             installer.install_databases()
             return
-        fasta_dir = Path(args["fasta_dir"])
-        out_dir = Path(args["o"])
+        print(f"Starting antiSMASH run: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
+        fasta_dir = args.get("fasta_dir")
+        out_dir = args.get("o")
+        if fasta_dir is None or out_dir is None:
+            print("Both -fasta_dir and -o parameters are required")
+            return
+        fasta_dir = Path(args.get("fasta_dir", "."))
+        out_dir = Path(args.get("o", "."))
         cores = int(args["cores"])
         strictness = args["strictness"]
         genefinding_tool = args["genefinding_tool"]
@@ -455,3 +461,4 @@ def main():
         local_runner.analyze_genomes()
         parser = smBGCParser(out_dir, cores)
         parser.gather_results()
+        print(f"Done: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
