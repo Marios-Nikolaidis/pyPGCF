@@ -3,6 +3,7 @@ from datetime import datetime
 from os import system
 from pathlib import Path
 from typing import Generator, List, Union
+from pypgcf.checks import check_if_file_exists
 
 import numpy as np
 
@@ -40,6 +41,7 @@ class SpeciesDemarcator:
         with open(str(tmp_file_for_fastani), "w") as f:
             for file in files_for_fastani:
                 f.write(str(file) + "\n")
+        return None
 
     def perform_fastani(self, org_list: Path, fout: Path) -> None:
         print(f"Performing FastANI: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
@@ -115,9 +117,17 @@ class SpeciesDemarcator:
         files_for_fastani = self.in_dir.glob("*")
         tmp_file_for_fastani = self.out_dir / "FastANI_input.txt"
         self.create_input_for_fastani(files_for_fastani, tmp_file_for_fastani)
+        if not check_if_file_exists(tmp_file_for_fastani):
+            raise FileNotFoundError(f"{tmp_file_for_fastani} was not created")
         fastani_out = self.out_dir / "FastANI.tsv"
         self.perform_fastani(tmp_file_for_fastani, fastani_out)
+        if not check_if_file_exists(fastani_out):
+            raise FileNotFoundError(f"{fastani_out} was not created")
         fastani_for_mcl = self.prepare_input_for_mcl(fastani_out)
+        if not check_if_file_exists(fastani_for_mcl):
+            raise FileNotFoundError(f"{fastani_for_mcl} was not created")
         fastani_from_mcl = self.run_mcl(fastani_for_mcl)
+        if not check_if_file_exists(fastani_from_mcl):
+            raise FileNotFoundError(f"{fastani_from_mcl} was not created")
         self.parse_mcx_output(fastani_from_mcl)
         print(f"Done: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")

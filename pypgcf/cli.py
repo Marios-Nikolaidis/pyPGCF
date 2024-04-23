@@ -293,7 +293,7 @@ def main():
             inflation,
             mcl_cores,
         )
-        demarcator.assign_species()  # TODO: Need to fix this
+        demarcator.assign_species()
 
     if args["module"] == "orthologues":
         fasta_in_dir = Path(args["in"])
