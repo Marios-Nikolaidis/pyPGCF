@@ -45,6 +45,11 @@ def main():
     species_demarcation_basic.add_argument(
         "-o", metavar="out", help="Output directory", required=True
     )
+    species_demarcation_basic.add_argument(
+        "--debug",
+        help="Used for debugging purposes",
+        action="store_true",
+    )
 
     species_demarcation_fastani = species_demarcation.add_argument_group(
         "FastANI options"
@@ -165,6 +170,11 @@ def main():
     phylogenomic.add_argument(
         "--cores", help="Number of cores", default=config.phylogenomic_cores
     )
+    phylogenomic.add_argument(
+        "--debug",
+        help="Used for debugging purposes",
+        action="store_true",
+    )
     phylogenomic_alns = phylogenomic.add_argument_group(
         "Intermediate fasta files options"
     )
@@ -198,7 +208,6 @@ def main():
     eggnog.add_argument("-fasta_dir", metavar="fasta_dir", help="Input fasta directory")
     eggnog.add_argument("-o", metavar="o", help="Output directory")
     eggnog.add_argument("--debug", help="Print debug information", action="store_true")
-    # eggnog.add_argument("--eggnog_results", metavar="file", help="Pre-computed eggnog results")
     eggnog_mapper = eggnog.add_argument_group("eggNOG mapper options")
     eggnog_mapper.add_argument(
         "--cores",
@@ -235,9 +244,7 @@ def main():
         metavar="fasta_dir",
         help="Directory with genomic fasta files",
     )
-    smbgc.add_argument(
-        "-o", metavar="output_dir", help="Output directory"
-    )
+    smbgc.add_argument("-o", metavar="output_dir", help="Output directory")
     smbgc.add_argument(
         "--cores",
         metavar="N",
@@ -264,6 +271,7 @@ def main():
         help="Install the required antiSMASH databases",
         action="store_true",
     )
+    smbgc.add_argument("--debug", help="Print debug information", action="store_true")
     # smbgc.add_argument("--remote", help="Submit queries to antiSMASH web service", action="store_true")
 
     # Parse arguments
@@ -278,6 +286,7 @@ def main():
             return
         out_dir = Path(args["o"])
         fastani_cores = args["fastani_cores"]
+        debug = args["debug"]
         kmer = int(args["kmer"])
         fraglen = int(args["fraglen"])
         minfraction = float(args["minfraction"])
@@ -292,6 +301,7 @@ def main():
             minfraction,
             inflation,
             mcl_cores,
+            debug,
         )
         demarcator.assign_species()
 
@@ -360,15 +370,17 @@ def main():
         cores = int(args["cores"])
         no_keep_fasta = args["no_keep_fasta"]
         tree_model = args["tree_model"]
+        debug = args["debug"]
         phylogenomic = Phylogenomic(
-            og_matrix_in, cores, fasta_dir, out_dir, no_keep_fasta, tree_model
+            og_matrix_in, cores, fasta_dir, out_dir, no_keep_fasta, tree_model, debug
         )
         phylogenomic.run_phylogenomic()
 
     if args["module"] == "eggnog":
         install = args["install"]
+        debug = args["debug"]
         if install:
-            installer = eggNOGInstaller()
+            installer = eggNOGInstaller(debug)
             installer.download_databases()
             return
         fasta_dir = args["fasta_dir"]
@@ -407,9 +419,6 @@ def main():
         core_proteins_file_list = [
             Path(core_proteins_file) for core_proteins_file in core_proteins_file_list
         ]
-        debug = False
-        if args["debug"]:
-            debug = True
         for core_proteins_file in core_proteins_file_list:
             core_proteins_file = Path(core_proteins_file)
             runner = eggNOGRunner(
@@ -424,16 +433,19 @@ def main():
                 debug=debug,
             )
             runner.execute_eggnog_mapper()
-        parser = eggNOGParser(fasta_dir, core_proteins_file_list, out_dir)
+        parser = eggNOGParser(fasta_dir, core_proteins_file_list, out_dir, debug)
         parser.gather_eggnog_results()
 
     if args["module"] == "smbgc":
         install = args["install"]
+        debug = args["debug"]
         if install:
-            installer = smBGCInstaller()
+            installer = smBGCInstaller(debug)
             installer.install_databases()
             return
-        print(f"Starting antiSMASH run: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}")
+        print(
+            f"Starting antiSMASH run: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}"
+        )
         fasta_dir = args.get("fasta_dir")
         out_dir = args.get("o")
         if fasta_dir is None or out_dir is None:
@@ -456,7 +468,7 @@ def main():
         if not checks.is_valid_genefinding_tool(genefinding_tool):
             return
         local_runner = smBGCLocalRunner(
-            fasta_dir, out_dir, cores, strictness, genefinding_tool
+            fasta_dir, out_dir, cores, strictness, genefinding_tool, debug
         )
         local_runner.analyze_genomes()
         parser = smBGCParser(out_dir, cores)

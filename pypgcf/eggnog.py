@@ -93,11 +93,10 @@ class eggNOGRunner:
                     "--itype CDS --translate",
                     f"-o {self.eggnog_raw_results_file}",
                     f"-i {self.fasta_file}",
-                    " > /dev/null ",
                 ]
             )
-        if self.debug:
-            eggnog_cmd = eggnog_cmd.replace(" > /dev/null ", "")
+        if not self.debug:
+            eggnog_cmd += " > /dev/null"
         self.eggnog_cmd = eggnog_cmd
 
     def clean_unessecary_output(self):
@@ -122,18 +121,20 @@ class eggNOGRunner:
         self.get_reference_fasta_file()
         self.create_eggnog_cmd()
         self.setup_directories()
+        status = system(self.eggnog_cmd)
         if self.debug:
-            status = system(self.eggnog_cmd)
             self.execute_status = status
             print(f"Eggnog mapper execute status: {self.execute_status}")
-        else:
-            system(self.eggnog_cmd)
         self.clean_unessecary_output()
 
 
 class eggNOGParser:
     def __init__(
-        self, fasta_dir: Path, core_protein_table_file_list: List[Path], out_dir: Path
+        self,
+        fasta_dir: Path,
+        core_protein_table_file_list: List[Path],
+        out_dir: Path,
+        debug: bool,
     ):
         self.fasta_dir = fasta_dir
         self.core_protein_table_file_list = core_protein_table_file_list
@@ -189,6 +190,7 @@ class eggNOGParser:
             "Y": "Nuclear structure",
             "Z": "Cytoskeleton",
         }
+        self.debug = debug
 
     def get_reference_fasta_file(self):
         self.ref = str(self.core_protein_table.index.name)

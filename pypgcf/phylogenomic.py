@@ -51,7 +51,7 @@ class Phylogenomic:
         self.iqtree_results_dir.mkdir(exist_ok=True, parents=True)
 
     def _replace_empty_with_na_in_orthology_matrix(self):
-        self.orthology_matrix = self.orthology_matrix.applymap(
+        self.orthology_matrix = self.orthology_matrix.map(
             lambda x: np_nan if x == "X" else x
         )
 
@@ -63,12 +63,9 @@ class Phylogenomic:
         self._replace_empty_with_na_in_orthology_matrix()
         self.orthology_matrix = self.orthology_matrix.dropna()
         if self.orthology_matrix.shape[0] == 0:
-            print(
-                f"Could not identify orthologous groups with orthologues from all genomes"
+            raise RuntimeError(
+                f"Couldn't identify orthologous groups with orthologues from all genomes"
             )
-            import sys
-
-            sys.exit()
         organisms: List = [self.orthology_matrix.index.name]
         organisms.extend(self.orthology_matrix.columns.tolist())
         fasta_files: Generator = self.fasta_dir.glob("*")
@@ -177,17 +174,11 @@ class Phylogenomic:
         Compute the phylogenomic tree using IQtree2
         """
         superalignment_file = self.out_dir / "superalignment.fa-gb"
-        cmd = " ".join(
-            [
-                "iqtree2",
-                f"-m {self.tree_model}",
-                "--quiet",
-                "-merit AIC",
-                "-alrt 1000",
-                f"-T {str(self.cores)}",
-                f"-s {superalignment_file}",
-            ]
+        cmd = "iqtree2 -m {} -merit AIC -alrt 1000 -T {} -s {}".format(
+            [self.tree_model, self.cores, superalignment_file]
         )
+        if not self.debug:
+            cmd += " --quiet"
         _execute_cmd(cmd)
 
     def move_iqtree_files(self):

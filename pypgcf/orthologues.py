@@ -6,10 +6,9 @@ from os import system
 from pathlib import Path
 from typing import Iterable, Union
 
-from tqdm import tqdm
-
 from Bio import SeqIO
 import pandas as pd
+from tqdm import tqdm
 
 
 class Orthologues_identifier:

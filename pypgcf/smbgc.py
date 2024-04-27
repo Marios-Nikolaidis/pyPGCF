@@ -18,7 +18,12 @@ class smBGCInstaller:
     def install_databases(self):
         print("Downloading databases of antiSMASH")
         cmd = "download-antismash-databases"
-        system(cmd)
+        ret = system(cmd)
+        if self.debug:
+            if ret == 0:
+                print("Installed successfully")
+            else:
+                print("Something went wrong with the download")
 
 
 class smBGCLocalRunner:
@@ -29,12 +34,14 @@ class smBGCLocalRunner:
         cores: int,
         strictness: str,
         genefinding_tool: str,
+        debug: bool,
     ):
         self.genome_fasta_dir = genome_fasta_dir
         self.antismash_raw_results_dir = out_dir / "smBGC" / "antismash_raw_results"
         self.cores = cores
         self.strictness = strictness
         self.genefinding_tool = genefinding_tool
+        self.debug = debug
 
     def create_antismash_cmd(self, genome_fasta_file: Path, genome_out_dir: Path):
         cmd = " ".join(
@@ -48,6 +55,8 @@ class smBGCLocalRunner:
                 f"{genome_fasta_file.absolute()}",
             ]
         )
+        if self.debug:
+            cmd += " -v -d"
         return cmd
 
     def run_antismash_cmd(self, cmd: str):
@@ -64,19 +73,27 @@ class smBGCLocalRunner:
             genome_out_dir = self.antismash_raw_results_dir / genome_file.stem
             genome_out_dirs.append(genome_out_dir)
             genome_out_dir.mkdir(exist_ok=True, parents=True)
-        commands = [self.create_antismash_cmd(gf, go) for gf, go in zip(genome_files, genome_out_dirs)]
-        with ProcessPoolExecutor(maximum_number_of_available_jobs) as executor:
-            list(
-                tqdm(
-                    executor.map(
-                        self.run_antismash_cmd, commands
-                    ),
-                    desc="Running antiSMASH",
-                    ascii=True,
-                    leave=True,
-                    total=len(genome_files),
+        commands = [
+            self.create_antismash_cmd(gf, go)
+            for gf, go in zip(genome_files, genome_out_dirs)
+        ]
+        if self.debug:
+            for cmd in tqdm(
+                commands, ascii=True, leave=True, desc="Running antiSMASH in debug mode"
+            ):
+                self.run_antismash_cmd(cmd)
+
+        else:
+            with ProcessPoolExecutor(maximum_number_of_available_jobs) as executor:
+                list(
+                    tqdm(
+                        executor.map(self.run_antismash_cmd, commands),
+                        desc="Running antiSMASH",
+                        ascii=True,
+                        leave=True,
+                        total=len(genome_files),
+                    )
                 )
-            )
 
 
 class smBGCParser:
