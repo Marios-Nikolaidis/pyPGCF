@@ -7,5 +7,7 @@ example/*
 archives/*
 data/
 data/*
+pypgcf/__pycache__
+pypgcf/__pycache__/*
 
 TODO.md

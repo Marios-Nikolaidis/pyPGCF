@@ -85,7 +85,7 @@ class SpeciesDemarcator:
             outdir / "FastANI_input.txt",
         ]
         for f in to_remove:
-            f.unlink()
+            f.unlink(missing_ok=True)
 
         to_rename = outdir / "fastANI_mcx_dump.txt"
         new_name = outdir / "fastANI_clusters.tsv"
