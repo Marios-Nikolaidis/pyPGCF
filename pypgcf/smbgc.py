@@ -7,8 +7,8 @@ from pathlib import Path
 import pandas as pd
 from tqdm import tqdm
 
-from checks import check_if_file_exists
-from config import system_cores
+from pypgcf.checks import check_if_file_exists
+from pypgcf.config import system_cores
 
 
 class smBGCInstaller:
