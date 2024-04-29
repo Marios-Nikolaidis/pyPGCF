@@ -20,6 +20,7 @@ requirements:
     - python ==3.9.*
     - iqtree >=2.*
     - gblocks
+    - fastani
     - muscle ==3.8.*
     - pandas
     - openpyxl
