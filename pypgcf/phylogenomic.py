@@ -1,20 +1,16 @@
-from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
-from os import system
 from pathlib import Path
 from typing import Generator, List, Union
-
-from numpy import nan as np_nan
-from tqdm import tqdm
 
 from Bio import AlignIO, SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
+from numpy import nan as np_nan
 import pandas as pd
+from tqdm import tqdm
 
+from pypgcf import dispatchers
 
-def _execute_cmd(cmd: str):
-    system(cmd)
 
 
 class Phylogenomic:
@@ -41,7 +37,7 @@ class Phylogenomic:
         self.no_keep_fasta = no_keep_fasta
         self.debug = debug
         self.tree_model = tree_model
-        if tree_model == None:
+        if tree_model is None:
             self.tree_model = "TEST"
 
     def setup_directories(self):
@@ -107,16 +103,7 @@ class Phylogenomic:
                 ]
             )
             commands.append(cmd)
-        with ProcessPoolExecutor(self.cores) as executor:
-            list(
-                tqdm(
-                    executor.map(_execute_cmd, commands),
-                    total=len(commands),
-                    desc="Aligning OG fasta files",
-                    ascii=True,
-                    leave=True,
-                )
-            )
+        dispatchers.multiprocess_dispatch("system", commands, self.cores, show_progress=True, description="Aligning OG fasta files")
 
     def create_superalignment_file(self):
         """
@@ -165,7 +152,7 @@ class Phylogenomic:
         cmd = " ".join(
             ["Gblocks", str(self.out_dir / "superalignment.fa"), "-s=y -e=-gb -p=y"]
         )
-        _execute_cmd(cmd)
+        _ = dispatchers.execute_command(cmd)
         htm_file = self.out_dir / "superalignment.fa-gb.htm"
         htm_file.unlink()
 
@@ -174,12 +161,12 @@ class Phylogenomic:
         Compute the phylogenomic tree using IQtree2
         """
         superalignment_file = self.out_dir / "superalignment.fa-gb"
-        cmd = "iqtree2 -m {} -merit AIC -alrt 1000 -T {} -s {}".format(
-            [self.tree_model, self.cores, superalignment_file]
+        cmd = "iqtree2 -m {} -merit AIC --alrt 1000 -T {} -s {}".format(
+            self.tree_model, self.cores, superalignment_file
         )
         if not self.debug:
             cmd += " --quiet"
-        _execute_cmd(cmd)
+        _ = dispatchers.execute_command(cmd)
 
     def move_iqtree_files(self):
         files = list(self.out_dir.glob("superalignment.fa-gb.*"))

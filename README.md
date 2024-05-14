@@ -37,4 +37,4 @@ Details on how to run each module are available in video format in **[figshare](
 The help page of the software and each module is available through the --help flag: `pyPGCF --help`
 
 ## Citation
-Nikolaidis, M., Oliver, S.G., Amoutzias, G.D., 2024. pyPGCF: a python software for phylogenomic analysis, species demarcation, identification of core and fingerprint proteins of bacterial genomes that are important for plants. Accepted in Methods in Molecular Biology.
+Nikolaidis, M., Oliver, S.G., Amoutzias, G.D., 2024. pyPGCF: a python software for phylogenomic analysis, species demarcation, identification of core and fingerprint proteins of bacterial genomes that are important for plants. Methods in Molecular Biology.

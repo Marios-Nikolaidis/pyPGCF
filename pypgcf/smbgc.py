@@ -1,12 +1,12 @@
 from concurrent.futures import ProcessPoolExecutor
 import json
 from math import ceil as math_ceil
-from os import system
 from pathlib import Path
 
 import pandas as pd
 from tqdm import tqdm
 
+from pypgcf import dispatchers
 from pypgcf.checks import check_if_file_exists
 from pypgcf.config import system_cores
 
@@ -18,12 +18,12 @@ class smBGCInstaller:
     def install_databases(self):
         print("Downloading databases of antiSMASH")
         cmd = "download-antismash-databases"
-        ret = system(cmd)
+        ret = dispatchers.execute_command(cmd)
         if self.debug:
             if ret == 0:
-                print("Installed successfully")
+                print("Installed antiSMASH database successfully")
             else:
-                print("Something went wrong with the download")
+                print("Something went wrong with the download of antiSMASH database")
 
 
 class smBGCLocalRunner:
@@ -59,8 +59,8 @@ class smBGCLocalRunner:
             cmd += " -v -d"
         return cmd
 
-    def run_antismash_cmd(self, cmd: str):
-        system(cmd)
+    # def run_antismash_cmd(self, cmd: str):
+    #     system(cmd)
 
     def analyze_genomes(self):
         maximum_number_of_available_jobs = math_ceil(system_cores / self.cores)
@@ -81,19 +81,21 @@ class smBGCLocalRunner:
             for cmd in tqdm(
                 commands, ascii=True, leave=True, desc="Running antiSMASH in debug mode"
             ):
-                self.run_antismash_cmd(cmd)
+                dispatchers.execute_command(cmd)
+            #     self.run_antismash_cmd(cmd)
 
         else:
-            with ProcessPoolExecutor(maximum_number_of_available_jobs) as executor:
-                list(
-                    tqdm(
-                        executor.map(self.run_antismash_cmd, commands),
-                        desc="Running antiSMASH",
-                        ascii=True,
-                        leave=True,
-                        total=len(genome_files),
-                    )
-                )
+            dispatchers.multiprocess_dispatch("system", commands, maximum_number_of_available_jobs, show_progress=True, description="Running antiSMASH")
+            # with ProcessPoolExecutor(maximum_number_of_available_jobs) as executor:
+            #     list(
+            #         tqdm(
+            #             executor.map(self.run_antismash_cmd, commands),
+            #             desc="Running antiSMASH",
+            #             ascii=True,
+            #             leave=True,
+            #             total=len(commands),
+            #         )
+            #     )
 
 
 class smBGCParser:

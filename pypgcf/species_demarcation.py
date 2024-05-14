@@ -1,13 +1,13 @@
 import csv
 from datetime import datetime
-from os import system
 from pathlib import Path
 from typing import Generator, List, Union
-from pypgcf.checks import check_if_file_exists
 
 from numpy import nan as npnan
-
 import pandas as pd
+
+from pypgcf import dispatchers
+from pypgcf.checks import check_if_file_exists
 
 
 class SpeciesDemarcator:
@@ -58,7 +58,7 @@ class SpeciesDemarcator:
         )
         if not self.debug:
             cmd += " > /dev/null 2>&1"
-        ret = system(cmd)
+        ret = dispatchers.execute_command(cmd)
         if ret != 0:
             raise RuntimeError("fastANI command was not successful")
         return None
@@ -92,7 +92,6 @@ class SpeciesDemarcator:
         to_rename.rename(new_name)
 
     def run_mcl(self, fastani_for_mcl: Path) -> Path:
-        # Make each one a system call
         print(
             f"Running MCL clustering: {datetime.now().strftime('%m/%d/%Y, %H:%M:%S')}"
         )
@@ -105,7 +104,7 @@ class SpeciesDemarcator:
         for cmd in cmds:
             if not self.debug:
                 cmd += " > /dev/null 2>&1"
-            ret = system(cmd)
+            ret = dispatchers.execute_command(cmd)
             if ret != 0:
                 raise RuntimeError("Something went wrong with MCL")
         self.clean_mcl(outdir)

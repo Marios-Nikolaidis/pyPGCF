@@ -1,13 +1,11 @@
 __pycache__/*
+pypgcf/__pycache__/*
+pypgcf/__pycache__
 tests/__pycache__/
 tests/__pycache__/*
-pypgcf/__pycache__/*
-pyPGCF.egg-info/
 example/*
 archives/*
 data/
 data/*
-pypgcf/__pycache__
-pypgcf/__pycache__/*
 
 TODO.md

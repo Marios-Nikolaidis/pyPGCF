@@ -1,14 +1,14 @@
-from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
 from math import floor
 from multiprocessing import cpu_count
-from os import system
 from pathlib import Path
 from typing import Iterable, Union
 
 from Bio import SeqIO
 import pandas as pd
 from tqdm import tqdm
+
+from pypgcf import dispatchers
 
 
 class Orthologues_identifier:
@@ -58,9 +58,6 @@ class Orthologues_identifier:
             self.blast_bin = blastn_bin
             self.blast_db_bin = makeblastdb_bin
 
-    def _execute_cmd(self, cmd: str) -> int:
-        """Generic function to execute a command"""
-        return system(cmd)
 
     def create_blast_db(self) -> None:
         """
@@ -73,7 +70,7 @@ class Orthologues_identifier:
             cmd = f"{self.blast_bin} makedb --in {fasta_file} --quiet --db {database_f} --threads {self.blast_cores}"  # DIAMOND
             if self.input_type == "nucl":
                 cmd = f"{self.blast_db_bin} -in {fasta_file} -dbtype nucl -out {database_f}"
-            self._execute_cmd(cmd)
+            dispatchers.execute_command(cmd)
 
     def _create_blast_cmd(
         self, fasta_file: Path, database_f: Path, out_file: Path
@@ -139,16 +136,7 @@ class Orthologues_identifier:
             cmds.append(forward_blast)
             cmds.append(reverse_blast)
 
-        with ProcessPoolExecutor(self.concurrent_jobs) as executor:
-            list(
-                tqdm(
-                    executor.map(self._execute_cmd, cmds),
-                    desc="Performing reciprocal DIAMOND/BLAST",
-                    ascii=True,
-                    leave=True,
-                    total=len(cmds),
-                )
-            )
+        _ = dispatchers.multiprocess_dispatch("system", cmds, self.concurrent_jobs, show_progress=True, description="Performing reciprocal homology search")
         return ref_fasta
 
     def _get_best_subject(self, df: pd.DataFrame) -> pd.DataFrame:
