@@ -36,7 +36,6 @@ class Core_identifier:
         If genus is True, then the complete table (taxon) is used
         """
         total_genomes = set(self.orthology_df.columns.tolist())
-        total_genomes.remove(self.ref)
         if self.genus:
             self.group_orgs = list(total_genomes)
             self.non_group_orgs = []

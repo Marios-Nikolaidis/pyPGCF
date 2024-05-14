@@ -3,28 +3,27 @@ from Bio import SeqIO
 import unittest
 import sys
 
-sys.path.append("../phylogenomic")
-from phylogenomic import Phylogenomic
+from pypgcf.phylogenomic import Phylogenomic
 
 class TestModule(unittest.TestCase):
     def _cleanup_fasta(self):
-        og_fasta_dir = Path("data") / "Phylogenomic_tree" / "OGs_fasta"
+        og_fasta_dir = Path("../data") / "Phylogenomic_tree" / "OGs_fasta"
         for fasta_file in og_fasta_dir.glob("*"):
             fasta_file.unlink() # For cleaning
         og_fasta_dir.rmdir()
 
     def test_create_og_fasta(self):
-        fasta_dir = Path("data/Protein_fasta_files")
-        orthology_matrix_f = Path("data/OGmatrix.csv")
+        fasta_dir = Path("../data/Protein_fasta_files")
+        orthology_matrix_f = Path("../data/OGmatrix.csv")
         cores = 4
-        out_dir = Path("data")
+        out_dir = Path("../data")
         no_keep_fasta = False
         tree_model = None
         phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, no_keep_fasta, tree_model, debug=True)
         
         phylogenomic.setup_directories()
         phylogenomic.create_og_fasta()
-        og_fasta_dir = Path("data") / "Phylogenomic_tree" / "OGs_fasta"
+        og_fasta_dir = Path("../data") / "Phylogenomic_tree" / "OGs_fasta"
         fasta_files = list(og_fasta_dir.glob("*"))
         self.assertEqual(len(fasta_files), 2137)
         for fasta_file in fasta_files:
@@ -37,15 +36,15 @@ class TestModule(unittest.TestCase):
         #self._cleanup_fasta()
 
     def test_align_og_fasta(self):
-        fasta_dir = Path("data/Protein_fasta_files")
-        orthology_matrix_f = Path("data/OGmatrix.csv")
+        fasta_dir = Path("../data/Protein_fasta_files")
+        orthology_matrix_f = Path("../data/OGmatrix.csv")
         cores = 4
-        out_dir = Path("data")
+        out_dir = Path("../data")
         no_keep_fasta = False
         tree_model = None
         phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, no_keep_fasta, tree_model, debug=True)
         phylogenomic.align_og_fasta()
-        og_fasta_dir = Path("data") / "Phylogenomic_tree" / "OGs_fasta_aln"
+        og_fasta_dir = Path("../data") / "Phylogenomic_tree" / "OGs_fasta_aln"
         fasta_files = list(og_fasta_dir.glob("*"))
         self.assertEqual(len(fasta_files), 2137)
         for fasta_file in fasta_files:
@@ -57,15 +56,15 @@ class TestModule(unittest.TestCase):
             self.assertEqual(num_records, 3)
 
     def test_create_supersequence_file(self):
-        fasta_dir = Path("data/Protein_fasta_files")
-        orthology_matrix_f = Path("data/OGmatrix.csv")
+        fasta_dir = Path("../data/Protein_fasta_files")
+        orthology_matrix_f = Path("../data/OGmatrix.csv")
         cores = 4
-        out_dir = Path("data")
+        out_dir = Path("../data")
         no_keep_fasta = False
         tree_model = None
         phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, no_keep_fasta, tree_model, debug=True)
         phylogenomic.create_supersequence_file()
-        supersequence_file = Path("data") / "Phylogenomic_tree" / "supersequence.fa"
+        supersequence_file = Path("../data") / "Phylogenomic_tree" / "supersequence.fa"
         supersequence_parser = SeqIO.parse(str(supersequence_file), "fasta")
         num_records =0 
         for record in supersequence_parser:
@@ -74,44 +73,44 @@ class TestModule(unittest.TestCase):
         self.assertEqual(num_records, 3)
 
     def test_filter_supersequence_aln(self):
-        fasta_dir = Path("data/Protein_fasta_files")
-        orthology_matrix_f = Path("data/OGmatrix.csv")
+        fasta_dir = Path("../data/Protein_fasta_files")
+        orthology_matrix_f = Path("../data/OGmatrix.csv")
         cores = 4
-        out_dir = Path("data")
+        out_dir = Path("../data")
         no_keep_fasta = False
         tree_model = None
         phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, no_keep_fasta, tree_model, debug=True)
         phylogenomic.filter_supersequence_aln()
-        supersequence_file = Path("data") / "Phylogenomic_tree" / "supersequence.fa-gb"
+        supersequence_file = Path("../data") / "Phylogenomic_tree" / "supersequence.fa-gb"
         supersequence_parser = SeqIO.parse(str(supersequence_file), "fasta")
         num_records =0 
         for record in supersequence_parser:
             num_records += 1
             self.assertGreater(len(record.seq), 0)
-        htm_supersequence_file = Path("data") / "Phylogenomic_tree" / "supersequence.fa-gb.htm"
+        htm_supersequence_file = Path("../data") / "Phylogenomic_tree" / "supersequence.fa-gb.htm"
         self.assertEqual(htm_supersequence_file.exists(), False)
  
     def test_compute_tree(self):
-        fasta_dir = Path("data/Protein_fasta_files")
-        orthology_matrix_f = Path("data/OGmatrix.csv")
+        fasta_dir = Path("../data/Protein_fasta_files")
+        orthology_matrix_f = Path("../data/OGmatrix.csv")
         cores = 4
-        out_dir = Path("data")
+        out_dir = Path("../data")
         no_keep_fasta = False
         tree_model = None
         phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, no_keep_fasta, tree_model, debug=True)
         phylogenomic.compute_tree()
         phylogenomic.move_iqtree_files()
-        directory_to_check = Path("data/Phylogenomic_tree/iqtree")
+        directory_to_check = Path("../data/Phylogenomic_tree/iqtree")
         files = directory_to_check.glob("*")
         filenames = [f.name for f in files]
         self.assertEqual(len(filenames), 7)
         self.assertIn("supersequence_IQTree2.nwk", filenames)
 
     def test_run_phylogenomic(self):
-        fasta_dir = Path("data/Protein_fasta_files")
-        orthology_matrix_f = Path("data/OGmatrix.csv")
+        fasta_dir = Path("../data/Protein_fasta_files")
+        orthology_matrix_f = Path("../data/OGmatrix.csv")
         cores = 4
-        out_dir = Path("data")
+        out_dir = Path("../data")
         no_keep_fasta = False
         tree_model = None
         phylogenomic = Phylogenomic(orthology_matrix_f, cores, fasta_dir, out_dir, no_keep_fasta, tree_model, debug=True)
